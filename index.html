@@ -25,76 +25,71 @@
                 <div class="loader-bar"></div>
             </div>
         </div>
-        <div class="splash-watermark">
-            <span class="watermark-text">powered by Antigravity</span>
-            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvinjxr8MVZ69diNIbNNMfcUljy04dIjkqPQ&s"
-                class="antigravity-logo-small" alt="Antigravity">
+    </div>
+
+    <div id="auth-screen" class="hidden screen-container">
+        <div class="auth-card">
+            <h1 class="upload-brand">SleekBook</h1>
+            <p class="upload-tagline">Login atau daftar otomatis untuk masuk</p>
+
+            <div class="auth-form">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="auth-username" placeholder="Username" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="auth-password" placeholder="Password">
+                </div>
+                <button id="btn-login" class="btn-primary">Masuk / Daftar</button>
+                <p id="auth-error" class="hidden error-text">Username atau password salah!</p>
+            </div>
         </div>
     </div>
 
-    <div id="upload-screen" class="hidden">
-        <div class="upload-wrapper">
-            <div class="upload-header">
-                <h1 class="upload-brand">Flipbookkkkkk</h1>
-                <p class="upload-tagline">Transform your PDF into an interactive flipbook</p>
-            </div>
+    <div id="dashboard-screen" class="hidden screen-container">
+        <div class="dashboard-wrapper">
+            <header class="dash-header">
+                <div>
+                    <h2 class="dash-title">Halo, <span id="dash-username">User</span>!</h2>
+                    <p class="dash-subtitle">Kelola koleksi flipbook kamu.</p>
+                </div>
+                <button id="btn-logout" class="btn-secondary"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+            </header>
 
-            <div id="password-section" class="drop-zone">
-                <div class="drop-zone-content">
-                    <div class="drop-icon" style="background: var(--bg-tertiary);">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <h2 class="drop-title">Akses Dibutuhkan</h2>
-                    <p class="drop-hint">Masukkan password untuk mengupload PDF</p>
-
-                    <div class="pw-input-group">
-                        <input type="password" id="app-password" placeholder="Password...">
-                        <button id="btn-unlock"><i class="fas fa-unlock"></i> Buka</button>
-                    </div>
-                    <p id="pw-error" class="hidden error-text">Password salah, coba lagi!</p>
+            <div class="dash-stats">
+                <div class="stat-box">
+                    <span class="stat-label">Penyimpanan Terpakai</span>
+                    <h3 class="stat-value"><span id="file-count">0</span> / 5 PDF</h3>
+                </div>
+                <div id="drop-zone" class="dash-drop-zone">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Upload PDF Baru (Max 50MB)</span>
+                    <input type="file" id="pdf-input" accept="application/pdf" class="hidden">
                 </div>
             </div>
 
-            <div id="drop-zone" class="drop-zone hidden">
-                <div class="drop-zone-content">
-                    <div class="drop-icon">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <h2 class="drop-title">Drop your PDF here</h2>
-                    <p class="drop-hint">or click to browse files</p>
-                    <div class="drop-divider">
-                        <span>PDF • Max 50MB</span>
-                    </div>
-                </div>
-                <input type="file" id="pdf-input" accept="application/pdf" class="hidden">
+            <p id="dash-message" class="dash-msg hidden"></p>
+
+            <div id="dashboard-loading" class="hidden">
+                <i class="fas fa-spinner fa-spin"></i> Sedang memproses PDF...
             </div>
 
-            <div id="processing-bar" class="hidden">
-                <div class="processing-info">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <span id="processing-text">Processing PDF...</span>
-                </div>
-                <div class="processing-track">
-                    <div class="processing-fill" id="processing-fill"></div>
-                </div>
+            <div class="file-grid" id="file-grid">
             </div>
-        </div>
-        <div class="upload-footer">
-            <span class="watermark-text">powered by Antigravity</span>
-            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvinjxr8MVZ69diNIbNNMfcUljy04dIjkqPQ&s"
-                class="antigravity-logo-small" alt="Antigravity">
         </div>
     </div>
 
     <div id="app" class="hidden">
         <header id="top-bar">
             <div class="nav-left">
-                <button id="btn-back" class="icon-btn" title="Upload New PDF"><i class="fas fa-arrow-left"></i></button>
+                <button id="btn-back-dash" class="icon-btn" title="Kembali ke Dashboard"><i
+                        class="fas fa-arrow-left"></i></button>
                 <span class="book-title" id="book-title">My Flipbook</span>
             </div>
             <div class="nav-center">
                 <div id="page-indicator">
-                    <span id="current-page">1-2</span> / <span id="total-page">10</span>
+                    <span id="current-page">1</span> / <span id="total-page">10</span>
                 </div>
             </div>
             <div class="nav-right">
@@ -108,17 +103,23 @@
         <main id="book-stage">
             <div class="book-wrapper" id="book-wrapper">
                 <button id="nav-prev" class="book-nav prev"><i class="fas fa-chevron-left"></i></button>
-
-                <div id="flipbook-container">
-                </div>
-
+                <div id="flipbook-container"></div>
                 <button id="nav-next" class="book-nav next"><i class="fas fa-chevron-right"></i></button>
             </div>
         </main>
 
-        <nav id="thumbnail-dock">
-            <div class="thumb-container" id="thumb-container">
+        <div id="viewer-loading" class="hidden">
+            <div class="viewer-loader-content">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <p id="viewer-loading-text">Menyiapkan Flipbook...</p>
+                <div class="loading-track">
+                    <div id="viewer-loading-fill" class="loading-fill"></div>
+                </div>
             </div>
+        </div>
+
+        <nav id="thumbnail-dock">
+            <div class="thumb-container" id="thumb-container"></div>
         </nav>
     </div>
 
