@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SleekBook — PDF to Flipbook</title>
+    <meta name="description" content="Upload your PDF and transform it into a beautiful, interactive digital flipbook.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="splash-screen">
+        <div class="splash-content">
+            <h1 class="splash-title">SleekBook</h1>
+            <p class="splash-subtitle">PDF to Flipbook</p>
+            <div class="splash-loader">
+                <div class="loader-bar"></div>
+            </div>
+        </div>
+        <div class="splash-watermark">
+            <span class="watermark-text">powered by Antigravity</span>
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvinjxr8MVZ69diNIbNNMfcUljy04dIjkqPQ&s"
+                class="antigravity-logo-small" alt="Antigravity">
+        </div>
+    </div>
+
+    <div id="upload-screen" class="hidden">
+        <div class="upload-wrapper">
+            <div class="upload-header">
+                <h1 class="upload-brand">Flipbookkkkkk</h1>
+                <p class="upload-tagline">Transform your PDF into an interactive flipbook</p>
+            </div>
+
+            <div id="password-section" class="drop-zone">
+                <div class="drop-zone-content">
+                    <div class="drop-icon" style="background: var(--bg-tertiary);">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h2 class="drop-title">Akses Dibutuhkan</h2>
+                    <p class="drop-hint">Masukkan password untuk mengupload PDF</p>
+
+                    <div class="pw-input-group">
+                        <input type="password" id="app-password" placeholder="Password...">
+                        <button id="btn-unlock"><i class="fas fa-unlock"></i> Buka</button>
+                    </div>
+                    <p id="pw-error" class="hidden error-text">Password salah, coba lagi!</p>
+                </div>
+            </div>
+
+            <div id="drop-zone" class="drop-zone hidden">
+                <div class="drop-zone-content">
+                    <div class="drop-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h2 class="drop-title">Drop your PDF here</h2>
+                    <p class="drop-hint">or click to browse files</p>
+                    <div class="drop-divider">
+                        <span>PDF • Max 50MB</span>
+                    </div>
+                </div>
+                <input type="file" id="pdf-input" accept="application/pdf" class="hidden">
+            </div>
+
+            <div id="processing-bar" class="hidden">
+                <div class="processing-info">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span id="processing-text">Processing PDF...</span>
+                </div>
+                <div class="processing-track">
+                    <div class="processing-fill" id="processing-fill"></div>
+                </div>
+            </div>
+        </div>
+        <div class="upload-footer">
+            <span class="watermark-text">powered by Antigravity</span>
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvinjxr8MVZ69diNIbNNMfcUljy04dIjkqPQ&s"
+                class="antigravity-logo-small" alt="Antigravity">
+        </div>
+    </div>
+
+    <div id="app" class="hidden">
+        <header id="top-bar">
+            <div class="nav-left">
+                <button id="btn-back" class="icon-btn" title="Upload New PDF"><i class="fas fa-arrow-left"></i></button>
+                <span class="book-title" id="book-title">My Flipbook</span>
+            </div>
+            <div class="nav-center">
+                <div id="page-indicator">
+                    <span id="current-page">1-2</span> / <span id="total-page">10</span>
+                </div>
+            </div>
+            <div class="nav-right">
+                <button id="btn-fullscreen" class="icon-btn" title="Fullscreen"><i class="fas fa-expand"></i></button>
+                <button id="btn-theme" class="icon-btn" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+                <button id="btn-zoom-out" class="icon-btn" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+                <button id="btn-zoom-in" class="icon-btn" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+            </div>
+        </header>
+
+        <main id="book-stage">
+            <div class="book-wrapper" id="book-wrapper">
+                <button id="nav-prev" class="book-nav prev"><i class="fas fa-chevron-left"></i></button>
+
+                <div id="flipbook-container">
+                </div>
+
+                <button id="nav-next" class="book-nav next"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </main>
+
+        <nav id="thumbnail-dock">
+            <div class="thumb-container" id="thumb-container">
+            </div>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
