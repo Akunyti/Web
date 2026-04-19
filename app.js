@@ -175,36 +175,25 @@ class FlipbookApp {
 
     bindAuthEvents() {
         const btnLogin = document.getElementById('btn-login');
-        const userIn = document.getElementById('auth-username');
         const passIn = document.getElementById('auth-password');
         const errTxt = document.getElementById('auth-error');
 
         const doAuth = () => {
-            const u = userIn.value.trim();
             const p = passIn.value.trim();
-            if (!u || !p) {
-                errTxt.textContent = "Isi username & password!";
+            if (!p) {
+                errTxt.textContent = "Isi password!";
                 errTxt.classList.remove('hidden'); return;
             }
 
-            let users = JSON.parse(localStorage.getItem('sleekbook_users') || '{}');
-
-            // Auto Register if not exists
-            if (!users[u]) {
-                users[u] = p;
-                localStorage.setItem('sleekbook_users', JSON.stringify(users));
-            } else {
-                // Check pass
-                if (users[u] !== p) {
-                    errTxt.textContent = "Password salah!";
-                    errTxt.classList.remove('hidden'); return;
-                }
+            if (p !== 'mijankuyy') {
+                errTxt.textContent = "Password salah!";
+                errTxt.classList.remove('hidden'); return;
             }
 
             errTxt.classList.add('hidden');
-            localStorage.setItem('sleekbook_active_user', u);
-            this.currentUser = u;
-            userIn.value = ''; passIn.value = '';
+            localStorage.setItem('sleekbook_active_user', 'admin');
+            this.currentUser = 'admin';
+            passIn.value = '';
             this.loadDashboard();
         };
 
@@ -370,6 +359,8 @@ class FlipbookApp {
 
             this.ui.viewerLoading.classList.add('hidden');
             this.book = new BookManager(this, pages);
+            this.book.fileId = id;
+            this.book.fileName = fileRecord.name;
             this.book.renderVisiblePages();
             this.buildThumbnails(pages);
         } catch (e) {
@@ -410,6 +401,60 @@ class FlipbookApp {
             this.book = null;
             document.getElementById('flipbook-container').innerHTML = ''; // clear RAM
             this.loadDashboard();
+        });
+
+        document.getElementById('btn-share').addEventListener('click', () => {
+            if (!this.book) return;
+            const modal = document.getElementById('share-modal');
+            const linkInput = document.getElementById('share-link-input');
+            
+            // Generate a fake link to show
+            const fakeUrl = window.location.href.split('?')[0] + '?file=' + encodeURIComponent(this.book.fileName);
+            linkInput.value = fakeUrl;
+            
+            modal.classList.remove('hidden');
+        });
+
+        document.getElementById('btn-close-share').addEventListener('click', () => {
+            document.getElementById('share-modal').classList.add('hidden');
+        });
+
+        document.getElementById('btn-copy-link').addEventListener('click', async (e) => {
+            const input = document.getElementById('share-link-input');
+            input.select();
+            input.setSelectionRange(0, 99999); 
+            
+            try {
+                await navigator.clipboard.writeText(input.value);
+                const btn = e.currentTarget;
+                const originalText = btn.textContent;
+                btn.textContent = 'Tersalin!';
+                btn.style.background = '#22c55e'; // green
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = ''; // reset primary
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+        });
+
+        document.getElementById('btn-download-pdf').addEventListener('click', async () => {
+            if (!this.book) return;
+            try {
+                const arrayBuffer = await this.db.getPDFData(this.book.fileId);
+                const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); 
+                a.href = url; 
+                a.download = this.book.fileName || 'flipbook.pdf'; 
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+                document.getElementById('share-modal').classList.add('hidden'); // close after download
+            } catch (e) {
+                console.error("Gagal mendownload:", e);
+                alert("Gagal mendownload PDF.");
+            }
         });
 
         document.getElementById('btn-theme').addEventListener('click', (e) => {
