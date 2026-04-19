@@ -536,6 +536,7 @@ class BookManager {
     setupPhysics() {
         const wrap = document.getElementById('book-wrapper');
         wrap.onpointerdown = (e) => {
+            if (this.isInteracting) return; // Prevent overlapping interactions
             if (e.target.closest('.book-nav') || e.target.closest('.thumb-item')) return;
             const rect = this.container.getBoundingClientRect();
             const clickedRight = e.clientX > rect.left + rect.width / 2;
@@ -553,15 +554,22 @@ class BookManager {
             this.flipEntity.style.zIndex = Math.abs(this.currentAngle) > 90 ? 3 : 5;
         };
         const endFlip = () => {
-            if (!this.isInteracting || !this.flipEntity) return;
-            this.isInteracting = false;
+            if (!this.isInteracting || !this.flipEntity) {
+                this.isInteracting = false;
+                return;
+            }
             const shouldCommit = this.flipDirection === 'forward' ? this.currentAngle < -90 : this.currentAngle > -90;
             if (shouldCommit) this.commitFlip(); else this.revertFlip();
         };
         wrap.onpointerup = endFlip; wrap.onpointercancel = endFlip;
+        wrap.onpointerleave = (e) => {
+            if (this.isInteracting && this.flipEntity) endFlip();
+        };
     }
 
     beginFlip(e, direction, rect) {
+        // Double check clear
+        this.cleanup();
         this.isInteracting = true; this.flipDirection = direction;
         this.startX = e.clientX; this.startWidth = this.isMobile ? rect.width : rect.width / 2;
         this.buildFlipEntity();
@@ -622,10 +630,20 @@ class BookManager {
         else if (content && content.dataUrl) { faceEl.innerHTML = `<img class="page-img" src="${content.dataUrl}" draggable="false">`; }
     }
 
-    cleanup() { if (this.flipEntity) { this.flipEntity.remove(); this.flipEntity = null; } }
+    cleanup() { 
+        if (this.flipEntity) { this.flipEntity.remove(); this.flipEntity = null; }
+        // Remove any orphaned spread elements that might have been left behind
+        const orphans = this.container.querySelectorAll('.fb-spread');
+        orphans.forEach(el => {
+            if (el.id !== 'base-single-page' && el.id !== 'base-left-page' && el.id !== 'base-right-page') {
+                el.remove();
+            }
+        });
+    }
 
     turnForward() {
         if (this.isInteracting || !this.canGoForward()) return;
+        this.cleanup();
         this.isInteracting = true; this.flipDirection = 'forward'; this.buildFlipEntity();
         this.flipEntity.style.transition = 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
         requestAnimationFrame(() => setTimeout(() => { if (this.flipEntity) this.flipEntity.style.transform = 'rotateY(-180deg)'; }, 20));
@@ -638,6 +656,7 @@ class BookManager {
 
     turnBackward() {
         if (this.isInteracting || !this.canGoBackward()) return;
+        this.cleanup();
         this.isInteracting = true; this.flipDirection = 'backward'; this.buildFlipEntity();
         this.flipEntity.style.transition = 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
         requestAnimationFrame(() => setTimeout(() => { if (this.flipEntity) this.flipEntity.style.transform = 'rotateY(0deg)'; }, 20));
@@ -650,6 +669,7 @@ class BookManager {
 
     goToPage(idx) {
         if (this.isInteracting) return;
+        this.cleanup();
         this.currentIndex = Math.max(0, Math.min(idx, this.pages.length - 1));
         this.renderVisiblePages(); this.app.updateThumbnails();
     }
