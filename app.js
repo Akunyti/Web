@@ -147,7 +147,7 @@ class FlipbookApp {
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        const externalFile = urlParams.get('file') || 'anjay.pdf.pdf';
+        const externalFile = urlParams.get('file') || 'anjay.pdf';
 
         setTimeout(() => {
             this.ui.splash.style.opacity = '0';
