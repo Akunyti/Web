@@ -31,8 +31,23 @@
         </div>
     </div>
 
+    <div id="catalog-screen" class="hidden screen-container" style="flex-direction: column; justify-content: flex-start;">
+        <header class="catalog-header">
+            <div>
+                <h1 class="upload-brand" style="text-align: left;">SleekBook Library</h1>
+                <p class="upload-tagline" style="text-align: left; margin-bottom: 0;">Explore our collection of digital books.</p>
+            </div>
+            <button id="btn-go-admin" class="icon-btn" title="Admin Login"><i class="fas fa-lock"></i></button>
+        </header>
+
+        <div class="catalog-grid" id="catalog-grid">
+            <!-- Items injected by JS -->
+        </div>
+    </div>
+
     <div id="auth-screen" class="hidden screen-container">
         <div class="auth-card">
+            <button id="btn-back-viewer" class="btn-back-catalog"><i class="fas fa-arrow-left"></i></button>
             <h1 class="upload-brand">SleekBook</h1>
             <p class="upload-tagline">Masukkan password rahasia untuk masuk</p>
 
@@ -83,8 +98,6 @@
     <div id="app" class="hidden">
         <header id="top-bar">
             <div class="nav-left">
-                <button id="btn-back-dash" class="icon-btn" title="Kembali ke Dashboard"><i
-                        class="fas fa-arrow-left"></i></button>
                 <span class="book-title" id="book-title">My Flipbook</span>
             </div>
             <div class="nav-center">
@@ -93,6 +106,7 @@
                 </div>
             </div>
             <div class="nav-right">
+                <button id="btn-admin-edit" class="icon-btn" title="Edit PDF (GitHub)"><i class="fas fa-lock"></i></button>
                 <button id="btn-share" class="icon-btn" title="Share / Download PDF"><i class="fas fa-share-nodes"></i></button>
                 <button id="btn-fullscreen" class="icon-btn" title="Fullscreen"><i class="fas fa-expand"></i></button>
                 <button id="btn-theme" class="icon-btn" title="Toggle Theme"><i class="fas fa-moon"></i></button>

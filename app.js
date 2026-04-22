@@ -127,11 +127,14 @@ class FlipbookApp {
 
         this.ui = {
             splash: document.getElementById('splash-screen'),
+            catalogScreen: document.getElementById('catalog-screen'),
             authScreen: document.getElementById('auth-screen'),
             dashScreen: document.getElementById('dashboard-screen'),
             appScreen: document.getElementById('app'),
             viewerLoading: document.getElementById('viewer-loading')
         };
+        
+        this.fromCatalog = false;
 
         this.init();
     }
@@ -141,20 +144,71 @@ class FlipbookApp {
             await this.db.init();
         } catch (e) {
             console.error("IndexedDB tidak didukung:", e);
-            alert("Browser kamu tidak mendukung penyimpanan lokal.");
         }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const externalFile = urlParams.get('file') || 'anjay.pdf.pdf';
 
         setTimeout(() => {
             this.ui.splash.style.opacity = '0';
             setTimeout(() => {
                 this.ui.splash.classList.add('hidden');
-                this.checkLoginState();
+                this.loadExternalPDF(externalFile);
             }, 800);
         }, 1500);
 
         this.bindAuthEvents();
         this.bindDashEvents();
         this.bindViewerEvents();
+    }
+
+    async checkCatalogOrLogin() {
+        let catalogData = [];
+        try {
+            const resp = await fetch('katalog.json');
+            if (resp.ok) {
+                catalogData = await resp.json();
+            }
+        } catch(e) {
+            // fetch gagal (misal file:// protocol), tetap tampilkan katalog kosong
+            console.warn('katalog.json tidak bisa di-fetch (normal jika buka via file://)');
+        }
+        
+        // Selalu tampilkan halaman katalog sebagai landing page
+        this.renderCatalog(catalogData);
+    }
+
+    renderCatalog(data) {
+        this.showScreen('catalogScreen');
+        const grid = document.getElementById('catalog-grid');
+        grid.innerHTML = '';
+        
+        if (data.length === 0) {
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-dim); padding:40px;">Katalog kosong.</div>';
+            return;
+        }
+
+        data.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'catalog-card';
+            card.innerHTML = `
+                <img src="${item.cover || 'https://via.placeholder.com/400x300/18181b/6366f1?text=PDF'}" class="catalog-cover" alt="Cover">
+                <div class="catalog-info">
+                    <div class="catalog-title">${item.title}</div>
+                    <div class="catalog-desc">${item.description || ''}</div>
+                    <div class="catalog-action">Baca Sekarang <i class="fas fa-arrow-right"></i></div>
+                </div>
+            `;
+            card.addEventListener('click', () => {
+                this.fromCatalog = true;
+                this.loadExternalPDF(item.file);
+            });
+            grid.appendChild(card);
+        });
+
+        document.getElementById('btn-go-admin').onclick = () => {
+             this.checkLoginState();
+        };
     }
 
     showScreen(screenName) {
@@ -177,6 +231,13 @@ class FlipbookApp {
         const btnLogin = document.getElementById('btn-login');
         const passIn = document.getElementById('auth-password');
         const errTxt = document.getElementById('auth-error');
+        const btnBack = document.getElementById('btn-back-viewer');
+
+        if(btnBack) {
+            btnBack.addEventListener('click', () => {
+                this.showScreen('appScreen');
+            });
+        }
 
         const doAuth = () => {
             const p = passIn.value.trim();
@@ -185,16 +246,17 @@ class FlipbookApp {
                 errTxt.classList.remove('hidden'); return;
             }
 
-            if (p !== 'mijankuyy') {
+            if (p !== 'mijankuy' && p !== 'mijankuyy') {
                 errTxt.textContent = "Password salah!";
                 errTxt.classList.remove('hidden'); return;
             }
 
             errTxt.classList.add('hidden');
-            localStorage.setItem('sleekbook_active_user', 'admin');
-            this.currentUser = 'admin';
             passIn.value = '';
-            this.loadDashboard();
+            
+            // Redirect to GitHub for editing
+            window.open('https://github.com/', '_blank');
+            this.showScreen('appScreen');
         };
 
         btnLogin.addEventListener('click', doAuth);
@@ -336,6 +398,7 @@ class FlipbookApp {
         if (!fileRecord) return;
 
         this.showScreen('appScreen');
+        document.getElementById('btn-back-dash').style.display = 'flex'; // pastikan tombol back tampil
         document.getElementById('book-title').textContent = fileRecord.name.replace(/\.pdf$/i, '');
         this.ui.viewerLoading.classList.remove('hidden');
         const loadText = document.getElementById('viewer-loading-text');
@@ -361,12 +424,60 @@ class FlipbookApp {
             this.book = new BookManager(this, pages);
             this.book.fileId = id;
             this.book.fileName = fileRecord.name;
+            this.book.isExternal = false;
             this.book.renderVisiblePages();
             this.buildThumbnails(pages);
         } catch (e) {
             console.error(e);
             alert("Gagal membuka PDF.");
             this.loadDashboard();
+        }
+    }
+
+    // --- PUBLIC VIEWER (STATIC HOSTING SUPPORT) ---
+    async loadExternalPDF(url) {
+        this.showScreen('appScreen');
+        
+        let displayTitle = url;
+        try { displayTitle = decodeURIComponent(url.split('/').pop().replace(/\.pdf$/i, '')); } catch(e){}
+        document.getElementById('book-title').textContent = displayTitle;
+        
+        this.ui.viewerLoading.classList.remove('hidden');
+        const loadText = document.getElementById('viewer-loading-text');
+        const loadFill = document.getElementById('viewer-loading-fill');
+        
+        loadText.textContent = "Mengunduh Dokumen Publik...";
+        loadFill.style.width = '10%';
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("File tidak ditemukan (404).");
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            const renderer = new PDFRenderer();
+            loadText.textContent = "Membaca Dokumen...";
+            loadFill.style.width = '30%';
+            await renderer.loadPDF(uint8Array);
+
+            const pages = await renderer.renderAllPages((current, total) => {
+                const progress = 30 + (current / total) * 70;
+                loadFill.style.width = `${progress}%`;
+                loadText.textContent = `Merender halaman ${current} dari ${total}...`;
+            });
+
+            this.ui.viewerLoading.classList.add('hidden');
+            this.book = new BookManager(this, pages);
+            this.book.fileId = null;
+            this.book.fileName = url.split('/').pop();
+            this.book.isExternal = true;
+            this.book.externalData = arrayBuffer; // Simpan di RAM untuk di download
+            this.book.renderVisiblePages();
+            this.buildThumbnails(pages);
+        } catch (e) {
+            console.error(e);
+            alert("Gagal membuka PDF publik. Pastikan link benar dan file telah di-upload ke server (Github).");
+            this.showScreen('authScreen');
         }
     }
 
@@ -397,11 +508,26 @@ class FlipbookApp {
     }
 
     bindViewerEvents() {
-        document.getElementById('btn-back-dash').addEventListener('click', () => {
-            this.book = null;
-            document.getElementById('flipbook-container').innerHTML = ''; // clear RAM
-            this.loadDashboard();
-        });
+        const btnBackDash = document.getElementById('btn-back-dash');
+        if (btnBackDash) {
+            btnBackDash.addEventListener('click', () => {
+                this.book = null;
+                document.getElementById('flipbook-container').innerHTML = ''; // clear RAM
+                if (this.fromCatalog) {
+                    this.fromCatalog = false;
+                    this.checkCatalogOrLogin();
+                } else {
+                    this.loadDashboard();
+                }
+            });
+        }
+
+        const btnAdminEdit = document.getElementById('btn-admin-edit');
+        if (btnAdminEdit) {
+            btnAdminEdit.addEventListener('click', () => {
+                this.showScreen('authScreen');
+            });
+        }
 
         document.getElementById('btn-share').addEventListener('click', () => {
             if (!this.book) return;
@@ -442,7 +568,15 @@ class FlipbookApp {
         document.getElementById('btn-download-pdf').addEventListener('click', async () => {
             if (!this.book) return;
             try {
-                const arrayBuffer = await this.db.getPDFData(this.book.fileId);
+                let arrayBuffer;
+                if (this.book.isExternal && this.book.externalData) {
+                    arrayBuffer = this.book.externalData;
+                } else if (this.book.fileId) {
+                    arrayBuffer = await this.db.getPDFData(this.book.fileId);
+                } else {
+                    return;
+                }
+                
                 const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a'); 
@@ -558,7 +692,7 @@ class BookManager {
                 this.isInteracting = false;
                 return;
             }
-            const shouldCommit = this.flipDirection === 'forward' ? this.currentAngle < -90 : this.currentAngle > -90;
+            const shouldCommit = this.flipDirection === 'forward' ? this.currentAngle < -45 : this.currentAngle > -135;
             if (shouldCommit) this.commitFlip(); else this.revertFlip();
         };
         wrap.onpointerup = endFlip; wrap.onpointercancel = endFlip;
@@ -584,6 +718,7 @@ class BookManager {
             this.currentIndex += this.flipDirection === 'forward' ? 1 : -1;
             this.currentIndex = Math.max(0, Math.min(this.currentIndex, this.pages.length - 1));
             this.cleanup(); this.renderVisiblePages(); this.app.updateThumbnails();
+            this.isInteracting = false;
         }, 420);
     }
 
@@ -591,7 +726,10 @@ class BookManager {
         const target = this.flipDirection === 'forward' ? '0deg' : '-180deg';
         this.flipEntity.style.transition = 'transform 0.4s ease-out';
         this.flipEntity.style.transform = `rotateY(${target})`;
-        setTimeout(() => this.cleanup(), 420);
+        setTimeout(() => {
+            this.cleanup();
+            this.isInteracting = false;
+        }, 420);
     }
 
     buildFlipEntity() {
@@ -716,10 +854,14 @@ class BookManager {
             f.innerHTML = this.pageImgHTML(nextV); bg.appendChild(f); this.container.appendChild(bg); return;
         }
         const nL = this.getLeftContent(nextV); const nR = this.getRightContent(nextV);
-        if (nextV !== 0 && nL && nL !== 'blank') {
+        if (nextV !== 0 && nL) {
             const bgL = document.createElement('div'); bgL.className = 'fb-spread'; bgL.style.cssText = 'right:auto; left:0; transform-origin:right center; z-index:1;';
             const bfL = document.createElement('div'); bfL.className = 'fb-face fb-face-left';
-            if (nL.dataUrl) bfL.innerHTML = `<img class="page-img" src="${nL.dataUrl}" draggable="false">`;
+            if (nL !== 'blank' && nL.dataUrl) {
+                bfL.innerHTML = `<img class="page-img" src="${nL.dataUrl}" draggable="false">`;
+            } else {
+                bfL.style.background = '#fafafa';
+            }
             bgL.appendChild(bfL); this.container.appendChild(bgL);
         }
         if (nextV !== this.pages.length - 1 && nR && nR.dataUrl) {
