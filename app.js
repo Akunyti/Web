@@ -3,6 +3,14 @@
  * Features: Auth, Dashboard (Max 5 PDFs), Local IndexedDB Storage
  */
 
+// =============================================
+// KONFIGURASI GITHUB — Isi dengan repo Anda
+// =============================================
+const GITHUB_CONFIG = {
+    owner: 'Akunyti',   // Username GitHub Anda
+    repo: 'Web',        // Nama repository (GANTI dengan nama repo Anda yang benar)
+};
+
 if (window.location.protocol === 'file:') {
     pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 } else {
@@ -169,19 +177,38 @@ class FlipbookApp {
     }
 
     async checkCatalogOrLogin() {
-        let catalogData = [];
-        try {
-            const resp = await fetch('katalog.json');
-            if (resp.ok) {
-                catalogData = await resp.json();
+        let pdfFiles = [];
+
+        // Coba scan otomatis dari GitHub API
+        if (GITHUB_CONFIG.owner && GITHUB_CONFIG.repo) {
+            try {
+                const apiUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/`;
+                const resp = await fetch(apiUrl);
+                if (resp.ok) {
+                    const files = await resp.json();
+                    pdfFiles = files
+                        .filter(f => f.name.toLowerCase().endsWith('.pdf'))
+                        .map(f => f.name);
+                    console.log('Auto-detected PDFs from GitHub:', pdfFiles);
+                }
+            } catch (e) {
+                console.warn('GitHub API gagal, fallback ke katalog.json:', e);
             }
-        } catch(e) {
-            // fetch gagal (misal file:// protocol), tetap tampilkan katalog kosong
-            console.warn('katalog.json tidak bisa di-fetch (normal jika buka via file://)');
         }
-        
-        // Selalu tampilkan halaman katalog sebagai landing page
-        this.renderCatalog(catalogData);
+
+        // Fallback ke katalog.json jika GitHub API gagal atau kosong
+        if (pdfFiles.length === 0) {
+            try {
+                const resp = await fetch('katalog.json');
+                if (resp.ok) {
+                    pdfFiles = await resp.json();
+                }
+            } catch (e) {
+                console.warn('katalog.json tidak bisa di-fetch');
+            }
+        }
+
+        this.renderCatalog(pdfFiles);
     }
 
     renderCatalog(data) {
