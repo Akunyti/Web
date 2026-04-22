@@ -108,7 +108,6 @@
             </div>
             <div class="nav-right">
                 <button id="btn-admin-edit" class="icon-btn" title="Edit PDF (GitHub)"><i class="fas fa-lock"></i></button>
-                <button id="btn-share" class="icon-btn" title="Share / Download PDF"><i class="fas fa-share-nodes"></i></button>
                 <button id="btn-fullscreen" class="icon-btn" title="Fullscreen"><i class="fas fa-expand"></i></button>
                 <button id="btn-theme" class="icon-btn" title="Toggle Theme"><i class="fas fa-moon"></i></button>
                 <button id="btn-zoom-out" class="icon-btn" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
@@ -139,38 +138,7 @@
         </nav>
     </div>
 
-    <div id="share-modal" class="hidden share-backdrop">
-        <div class="share-card">
-            <div class="share-header">
-                <h3>Bagikan Flipbook</h3>
-                <button id="btn-close-share" class="icon-btn"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="share-body">
-                <div class="share-option">
-                    <div class="share-icon"><i class="fas fa-link"></i></div>
-                    <div class="share-text">
-                        <h4>Tautan Publik (Siap dibagikan)</h4>
-                        <p>Siapapun dengan tautan ini dapat melihat flipbook Anda.</p>
-                    </div>
-                </div>
-                <div class="share-action-row">
-                    <input type="text" id="share-link-input" readonly value="https://sleekbook.app/view/12345">
-                    <button class="btn-primary" id="btn-copy-link">Salin Link</button>
-                </div>
-                
-                <hr class="share-divider">
 
-                <div class="share-option">
-                    <div class="share-icon"><i class="fas fa-download"></i></div>
-                    <div class="share-text">
-                        <h4>Download File PDF Asli</h4>
-                        <p>Simpan PDF ini ke perangkat Anda.</p>
-                    </div>
-                </div>
-                <button class="btn-secondary full-width" id="btn-download-pdf"><i class="fas fa-download"></i> Download PDF</button>
-            </div>
-        </div>
-    </div>
 
     <script src="app.js"></script>
 </body>

@@ -318,6 +318,18 @@ body {
     object-fit: cover;
 }
 
+.catalog-cover-icon {
+    width: 100%;
+    height: 160px;
+    background: linear-gradient(135deg, var(--accent-soft) 0%, var(--bg-tertiary) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: var(--accent);
+    border-bottom: 1px solid var(--glass-border);
+}
+
 .catalog-info {
     padding: 20px;
     flex: 1;
@@ -948,109 +960,4 @@ body {
 
 #app.fullscreen #book-stage {
     height: 100vh;
-/* Share Modal */
-.share-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    animation: fadeIn 0.3s ease;
-}
-
-.share-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    width: 100%;
-    max-width: 480px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    overflow: hidden;
-}
-
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.share-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--glass-border);
-}
-
-.share-header h3 {
-    font-size: 1.2rem;
-    font-weight: 600;
-}
-
-.share-body {
-    padding: 24px;
-}
-
-.share-option {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
-.share-icon {
-    width: 40px;
-    height: 40px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-}
-
-.share-text h4 {
-    font-size: 1rem;
-    margin-bottom: 4px;
-}
-
-.share-text p {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    line-height: 1.4;
-}
-
-.share-action-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 24px;
-}
-
-.share-action-row input {
-    flex: 1;
-    background: var(--bg-main);
-    border: 1px solid var(--glass-border);
-    color: var(--text-dim);
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    outline: none;
-}
-
-.share-divider {
-    border: none;
-    height: 1px;
-    background: var(--glass-border);
-    margin: 24px 0;
-}
-
-.full-width {
-    width: 100%;
-    justify-content: center;
-    padding: 12px;
 }

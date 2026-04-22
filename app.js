@@ -147,13 +147,19 @@ class FlipbookApp {
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        const externalFile = urlParams.get('file') || 'anjay.pdf';
+        const externalFile = urlParams.get('file');
 
         setTimeout(() => {
             this.ui.splash.style.opacity = '0';
             setTimeout(() => {
                 this.ui.splash.classList.add('hidden');
-                this.loadExternalPDF(externalFile);
+                if (externalFile) {
+                    // Direct link ke PDF tertentu
+                    this.loadExternalPDF(externalFile);
+                } else {
+                    // Tampilkan katalog multi-PDF
+                    this.checkCatalogOrLogin();
+                }
             }, 800);
         }, 1500);
 
@@ -183,19 +189,34 @@ class FlipbookApp {
         const grid = document.getElementById('catalog-grid');
         grid.innerHTML = '';
         
-        if (data.length === 0) {
+        // Normalisasi data: dukung array of strings ATAU array of objects
+        const items = data.map(entry => {
+            if (typeof entry === 'string') {
+                // Hanya nama file, auto-generate judul
+                return { file: entry, title: this.prettifyFilename(entry), description: '' };
+            }
+            // Object format: { file, title?, description?, cover? }
+            return {
+                file: entry.file,
+                title: entry.title || this.prettifyFilename(entry.file),
+                description: entry.description || '',
+                cover: entry.cover || null
+            };
+        });
+
+        if (items.length === 0) {
             grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-dim); padding:40px;">Katalog kosong.</div>';
             return;
         }
 
-        data.forEach(item => {
+        items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'catalog-card';
             card.innerHTML = `
-                <img src="${item.cover || 'https://via.placeholder.com/400x300/18181b/6366f1?text=PDF'}" class="catalog-cover" alt="Cover">
+                <div class="catalog-cover-icon"><i class="fas fa-book-open"></i></div>
                 <div class="catalog-info">
                     <div class="catalog-title">${item.title}</div>
-                    <div class="catalog-desc">${item.description || ''}</div>
+                    <div class="catalog-desc">${item.description}</div>
                     <div class="catalog-action">Baca Sekarang <i class="fas fa-arrow-right"></i></div>
                 </div>
             `;
@@ -207,8 +228,20 @@ class FlipbookApp {
         });
 
         document.getElementById('btn-go-admin').onclick = () => {
-             this.checkLoginState();
+             this.showScreen('authScreen');
         };
+    }
+
+    // Ubah nama file random jadi judul yang rapi
+    prettifyFilename(filename) {
+        return filename
+            .replace(/\.pdf$/i, '')       // hapus .pdf
+            .replace(/[_\-\.]+/g, ' ')    // ganti _, -, . jadi spasi
+            .replace(/\s+/g, ' ')         // hapus spasi ganda
+            .trim()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ') || 'Untitled';
     }
 
     showScreen(screenName) {
@@ -476,8 +509,18 @@ class FlipbookApp {
             this.buildThumbnails(pages);
         } catch (e) {
             console.error(e);
-            alert("Gagal membuka PDF publik. Pastikan link benar dan file telah di-upload ke server (Github).");
-            this.showScreen('authScreen');
+            this.ui.viewerLoading.classList.add('hidden');
+            this.container = document.getElementById('flipbook-container');
+            if (this.container) {
+                this.container.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);text-align:center;padding:40px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size:3rem;color:var(--danger);margin-bottom:16px;"></i>
+                        <h3 style="color:var(--text-primary);margin-bottom:8px;">Gagal Memuat PDF</h3>
+                        <p style="margin-bottom:20px;">Pastikan file PDF sudah di-upload ke server dengan benar.</p>
+                        <button onclick="location.reload()" style="padding:10px 24px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Coba Lagi</button>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -508,17 +551,13 @@ class FlipbookApp {
     }
 
     bindViewerEvents() {
-        const btnBackDash = document.getElementById('btn-back-dash');
-        if (btnBackDash) {
-            btnBackDash.addEventListener('click', () => {
+        const btnBackCatalog = document.getElementById('btn-back-catalog');
+        if (btnBackCatalog) {
+            btnBackCatalog.addEventListener('click', () => {
                 this.book = null;
-                document.getElementById('flipbook-container').innerHTML = ''; // clear RAM
-                if (this.fromCatalog) {
-                    this.fromCatalog = false;
-                    this.checkCatalogOrLogin();
-                } else {
-                    this.loadDashboard();
-                }
+                document.getElementById('flipbook-container').innerHTML = '';
+                document.getElementById('thumb-container').innerHTML = '';
+                this.checkCatalogOrLogin();
             });
         }
 
@@ -528,68 +567,6 @@ class FlipbookApp {
                 this.showScreen('authScreen');
             });
         }
-
-        document.getElementById('btn-share').addEventListener('click', () => {
-            if (!this.book) return;
-            const modal = document.getElementById('share-modal');
-            const linkInput = document.getElementById('share-link-input');
-            
-            // Generate a fake link to show
-            const fakeUrl = window.location.href.split('?')[0] + '?file=' + encodeURIComponent(this.book.fileName);
-            linkInput.value = fakeUrl;
-            
-            modal.classList.remove('hidden');
-        });
-
-        document.getElementById('btn-close-share').addEventListener('click', () => {
-            document.getElementById('share-modal').classList.add('hidden');
-        });
-
-        document.getElementById('btn-copy-link').addEventListener('click', async (e) => {
-            const input = document.getElementById('share-link-input');
-            input.select();
-            input.setSelectionRange(0, 99999); 
-            
-            try {
-                await navigator.clipboard.writeText(input.value);
-                const btn = e.currentTarget;
-                const originalText = btn.textContent;
-                btn.textContent = 'Tersalin!';
-                btn.style.background = '#22c55e'; // green
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = ''; // reset primary
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy', err);
-            }
-        });
-
-        document.getElementById('btn-download-pdf').addEventListener('click', async () => {
-            if (!this.book) return;
-            try {
-                let arrayBuffer;
-                if (this.book.isExternal && this.book.externalData) {
-                    arrayBuffer = this.book.externalData;
-                } else if (this.book.fileId) {
-                    arrayBuffer = await this.db.getPDFData(this.book.fileId);
-                } else {
-                    return;
-                }
-                
-                const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); 
-                a.href = url; 
-                a.download = this.book.fileName || 'flipbook.pdf'; 
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(url), 2000);
-                document.getElementById('share-modal').classList.add('hidden'); // close after download
-            } catch (e) {
-                console.error("Gagal mendownload:", e);
-                alert("Gagal mendownload PDF.");
-            }
-        });
 
         document.getElementById('btn-theme').addEventListener('click', (e) => {
             const html = document.documentElement;
