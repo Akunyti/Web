@@ -459,12 +459,7 @@ class FlipbookApp {
 
         this.showScreen('appScreen');
         
-        // Auto fullscreen for better reading experience on mobile
-        if (window.innerWidth <= 850 && !document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(() => {});
-            document.getElementById('app').classList.add('fullscreen');
-            document.getElementById('btn-fullscreen').innerHTML = '<i class="fas fa-compress"></i>';
-        }
+
 
         document.getElementById('btn-back-dash').style.display = 'flex'; // pastikan tombol back tampil
         document.getElementById('book-title').textContent = fileRecord.name.replace(/\.pdf$/i, '');
@@ -506,12 +501,7 @@ class FlipbookApp {
     async loadExternalPDF(url) {
         this.showScreen('appScreen');
         
-        // Auto fullscreen for better reading experience on mobile
-        if (window.innerWidth <= 850 && !document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(() => {});
-            document.getElementById('app').classList.add('fullscreen');
-            document.getElementById('btn-fullscreen').innerHTML = '<i class="fas fa-compress"></i>';
-        }
+
         
         let displayTitle = url;
         try { displayTitle = decodeURIComponent(url.split('/').pop().replace(/\.pdf$/i, '')); } catch(e){}
@@ -717,7 +707,8 @@ class BookManager {
             minHeight: 200,
             maxHeight: 2000,
             maxShadowOpacity: 0.5,
-            showCover: true,
+            showCover: false,
+            showPageCorners: false,
             mobileScrollSupport: false,
             usePortrait: this.isMobile
         });
