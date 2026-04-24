@@ -707,9 +707,9 @@ class BookManager {
             minHeight: 200,
             maxHeight: 2000,
             maxShadowOpacity: 0.5,
-            showCover: false,
+            showCover: true,
             showPageCorners: false,
-            mobileScrollSupport: false,
+            mobileScrollSupport: true,
             usePortrait: this.isMobile
         });
 

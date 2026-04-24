@@ -731,13 +731,11 @@ body {
 #flipbook-container {
     position: relative;
     background-color: transparent;
-    touch-action: none;
     transition: transform 0.3s ease;
 }
 
 .my-page {
     background-color: #fafafa;
-    overflow: hidden;
 }
 
 .page-content {
