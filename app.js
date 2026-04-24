@@ -722,7 +722,6 @@ class BookManager {
             usePortrait: this.isMobile
         });
 
-        const pagesElements = this.container.querySelectorAll('.my-page');
         this.pageFlip.loadFromHTML(pagesElements);
 
         this.pageFlip.on('flip', (e) => {
