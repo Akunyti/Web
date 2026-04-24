@@ -458,6 +458,14 @@ class FlipbookApp {
         if (!fileRecord) return;
 
         this.showScreen('appScreen');
+        
+        // Auto fullscreen for better reading experience on mobile
+        if (window.innerWidth <= 850 && !document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            document.getElementById('app').classList.add('fullscreen');
+            document.getElementById('btn-fullscreen').innerHTML = '<i class="fas fa-compress"></i>';
+        }
+
         document.getElementById('btn-back-dash').style.display = 'flex'; // pastikan tombol back tampil
         document.getElementById('book-title').textContent = fileRecord.name.replace(/\.pdf$/i, '');
         this.ui.viewerLoading.classList.remove('hidden');
@@ -497,6 +505,13 @@ class FlipbookApp {
     // --- PUBLIC VIEWER (STATIC HOSTING SUPPORT) ---
     async loadExternalPDF(url) {
         this.showScreen('appScreen');
+        
+        // Auto fullscreen for better reading experience on mobile
+        if (window.innerWidth <= 850 && !document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            document.getElementById('app').classList.add('fullscreen');
+            document.getElementById('btn-fullscreen').innerHTML = '<i class="fas fa-compress"></i>';
+        }
         
         let displayTitle = url;
         try { displayTitle = decodeURIComponent(url.split('/').pop().replace(/\.pdf$/i, '')); } catch(e){}
@@ -635,31 +650,114 @@ class BookManager {
         this.container = document.getElementById('flipbook-container');
         this.zoomLevel = 1;
         this.pageAspect = pages[0] ? (pages[0].width / pages[0].height) : (4 / 3);
-        this.isInteracting = false; this.flipEntity = null; this.startX = 0; this.startWidth = 0;
-        this.flipDirection = ''; this.currentAngle = 0;
         this.isMobile = window.innerWidth <= 850;
+        
+        // Clean container
+        this.container.innerHTML = '';
+        
         this.applyDynamicSize();
-
+        
         window.addEventListener('resize', () => {
             this.isMobile = window.innerWidth <= 850;
-            this.applyDynamicSize(); this.renderVisiblePages();
+            this.applyDynamicSize();
+            if (this.pageFlip) this.pageFlip.update();
         });
-        this.bindEvents(); this.setupPhysics();
+
+        this.initPageFlip();
+        this.bindEvents();
     }
 
     applyDynamicSize() {
-        const maxH = window.innerHeight - 160; const maxW = window.innerWidth * 0.88;
-        let pageH = maxH; let pageW = pageH * this.pageAspect;
+        const maxH = window.innerHeight - 160; 
+        const maxW = window.innerWidth * 0.88;
+        let pageH = maxH; 
+        let pageW = pageH * this.pageAspect;
+        
         const spreadW = this.isMobile ? pageW : pageW * 2;
-        if (spreadW > maxW) { const scale = maxW / spreadW; pageW *= scale; pageH *= scale; }
+        if (spreadW > maxW) { 
+            const scale = maxW / spreadW; 
+            pageW *= scale; 
+            pageH *= scale; 
+        }
+        
         this.container.style.width = (this.isMobile ? pageW : pageW * 2) + 'px';
         this.container.style.height = pageH + 'px';
+        
+        this.pageW = pageW;
+        this.pageH = pageH;
     }
 
-    getLeftContent(v) { return (v <= 0) ? null : (v >= this.pages.length - 1 ? this.pages[v] : 'blank'); }
-    getRightContent(v) { return (v >= this.pages.length - 1) ? null : this.pages[v]; }
-    canGoForward() { return this.currentIndex < this.pages.length - 1; }
-    canGoBackward() { return this.currentIndex > 0; }
+    initPageFlip() {
+        if (this.pageFlip) {
+            this.pageFlip.destroy();
+        }
+        
+        this.container.innerHTML = '';
+        this.pages.forEach((pageData, i) => {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'my-page';
+            pageDiv.style.backgroundColor = '#fafafa';
+            pageDiv.innerHTML = `<div class="page-content" style="width:100%; height:100%; padding:0; margin:0; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);"><img src="${pageData.dataUrl}" style="width:100%; height:100%; object-fit:contain; pointer-events:none;" draggable="false"></div>`;
+            this.container.appendChild(pageDiv);
+        });
+
+        this.pageFlip = new StPageFlip.PageFlip(this.container, {
+            width: this.pageW,
+            height: this.pageH,
+            size: 'stretch',
+            minWidth: 200,
+            maxWidth: 2000,
+            minHeight: 200,
+            maxHeight: 2000,
+            maxShadowOpacity: 0.5,
+            showCover: true,
+            mobileScrollSupport: false,
+            usePortrait: this.isMobile
+        });
+
+        const pagesElements = this.container.querySelectorAll('.my-page');
+        this.pageFlip.loadFromHTML(pagesElements);
+
+        this.pageFlip.on('flip', (e) => {
+            this.currentIndex = e.data;
+            this.updateIndicators();
+            this.updateNavButtons();
+            this.app.updateThumbnails();
+        });
+        
+        this.updateIndicators();
+        this.updateNavButtons();
+    }
+
+    turnForward() {
+        if (this.pageFlip) this.pageFlip.flipNext();
+    }
+
+    turnBackward() {
+        if (this.pageFlip) this.pageFlip.flipPrev();
+    }
+
+    goToPage(idx) {
+        if (this.pageFlip) this.pageFlip.flip(idx);
+    }
+    
+    // Stub to maintain compatibility with FlipbookApp calls
+    renderVisiblePages() {} 
+
+    updateIndicators() { 
+        document.getElementById('current-page').textContent = this.currentIndex + 1; 
+        document.getElementById('total-page').textContent = this.pages.length; 
+    }
+    
+    updateNavButtons() { 
+        document.getElementById('nav-prev').disabled = this.currentIndex === 0; 
+        document.getElementById('nav-next').disabled = this.currentIndex >= this.pages.length - 1; 
+    }
+    
+    setZoom(level) { 
+        this.zoomLevel = Math.max(0.5, Math.min(2, level)); 
+        this.container.style.transform = `scale(${this.zoomLevel})`; 
+    }
 
     bindEvents() {
         document.getElementById('nav-prev').onclick = () => this.turnBackward();
@@ -670,216 +768,6 @@ class BookManager {
             else if (e.key === 'ArrowLeft') { e.preventDefault(); this.turnBackward(); }
         };
     }
-
-    setupPhysics() {
-        const wrap = document.getElementById('book-wrapper');
-        wrap.onpointerdown = (e) => {
-            if (this.isInteracting) return; // Prevent overlapping interactions
-            if (e.target.closest('.book-nav') || e.target.closest('.thumb-item')) return;
-            const rect = this.container.getBoundingClientRect();
-            const clickedRight = e.clientX > rect.left + rect.width / 2;
-            if (clickedRight && this.canGoForward()) this.beginFlip(e, 'forward', rect);
-            else if (!clickedRight && this.canGoBackward()) this.beginFlip(e, 'backward', rect);
-        };
-        wrap.onpointermove = (e) => {
-            if (!this.isInteracting || !this.flipEntity) return;
-            e.preventDefault();
-            const deltaX = e.clientX - this.startX;
-            const progress = Math.max(-1, Math.min(1, deltaX / this.startWidth));
-            if (this.flipDirection === 'forward') this.currentAngle = Math.max(-180, Math.min(0, progress * 180));
-            else this.currentAngle = Math.min(0, Math.max(-180, -180 + progress * 180));
-            this.flipEntity.style.transform = `rotateY(${this.currentAngle}deg)`;
-            this.flipEntity.style.zIndex = Math.abs(this.currentAngle) > 90 ? 3 : 5;
-        };
-        const endFlip = () => {
-            if (!this.isInteracting || !this.flipEntity) {
-                this.isInteracting = false;
-                return;
-            }
-            const shouldCommit = this.flipDirection === 'forward' ? this.currentAngle < -45 : this.currentAngle > -135;
-            if (shouldCommit) this.commitFlip(); else this.revertFlip();
-        };
-        wrap.onpointerup = endFlip; wrap.onpointercancel = endFlip;
-        wrap.onpointerleave = (e) => {
-            if (this.isInteracting && this.flipEntity) endFlip();
-        };
-    }
-
-    beginFlip(e, direction, rect) {
-        // Double check clear
-        this.cleanup();
-        this.isInteracting = true; this.flipDirection = direction;
-        this.startX = e.clientX; this.startWidth = this.isMobile ? rect.width : rect.width / 2;
-        this.buildFlipEntity();
-        try { e.target.setPointerCapture(e.pointerId); } catch (_) { }
-    }
-
-    commitFlip() {
-        const target = this.flipDirection === 'forward' ? '-180deg' : '0deg';
-        this.flipEntity.style.transition = 'transform 0.4s ease-out';
-        this.flipEntity.style.transform = `rotateY(${target})`;
-        setTimeout(() => {
-            this.currentIndex += this.flipDirection === 'forward' ? 1 : -1;
-            this.currentIndex = Math.max(0, Math.min(this.currentIndex, this.pages.length - 1));
-            this.cleanup(); this.renderVisiblePages(); this.app.updateThumbnails();
-            this.isInteracting = false;
-        }, 420);
-    }
-
-    revertFlip() {
-        const target = this.flipDirection === 'forward' ? '0deg' : '-180deg';
-        this.flipEntity.style.transition = 'transform 0.4s ease-out';
-        this.flipEntity.style.transform = `rotateY(${target})`;
-        setTimeout(() => {
-            this.cleanup();
-            this.isInteracting = false;
-        }, 420);
-    }
-
-    buildFlipEntity() {
-        const el = document.createElement('div');
-        el.className = 'fb-spread'; el.style.zIndex = '5'; el.style.transformStyle = 'preserve-3d';
-        this.flipEntity = el;
-        const front = this.makeFace('0 6px 6px 0', '2px 0 8px rgba(0,0,0,0.1)'); front.style.transform = 'rotateY(0deg)';
-        const back = this.makeFace('6px 0 0 6px', '-2px 0 8px rgba(0,0,0,0.1)'); back.style.transform = 'rotateY(180deg)';
-        const v = this.currentIndex;
-
-        if (this.flipDirection === 'forward') {
-            this.currentAngle = 0;
-            this.fillFace(front, this.getRightContent(v)); this.fillFace(back, 'blank');
-        } else {
-            this.currentAngle = -180; el.style.transform = 'rotateY(-180deg)';
-            this.fillFace(front, this.getRightContent(v - 1)); this.fillFace(back, this.getLeftContent(v));
-        }
-
-        if (this.isMobile) { el.style.width = '100%'; el.style.right = 'auto'; el.style.left = '0'; el.style.transformOrigin = 'right center'; }
-        el.appendChild(front); el.appendChild(back); this.container.appendChild(el);
-
-        if (this.isMobile) { const sp = document.getElementById('base-single-page'); if (sp) sp.style.visibility = 'hidden'; }
-        else if (this.flipDirection === 'forward') { const rp = document.getElementById('base-right-page'); if (rp) rp.style.visibility = 'hidden'; }
-        else { const lp = document.getElementById('base-left-page'); if (lp) lp.style.visibility = 'hidden'; }
-        this.renderBackground();
-    }
-
-    makeFace(borderRadius, boxShadow) {
-        const f = document.createElement('div');
-        f.style.cssText = `position:absolute; inset:0; overflow:hidden; backface-visibility:hidden; -webkit-backface-visibility:hidden; background:#fafafa; border-radius:${borderRadius}; box-shadow:${boxShadow};`;
-        return f;
-    }
-
-    fillFace(faceEl, content) {
-        if (!content || content === 'blank') { faceEl.style.background = '#fafafa'; faceEl.innerHTML = ''; }
-        else if (content && content.dataUrl) { faceEl.innerHTML = `<img class="page-img" src="${content.dataUrl}" draggable="false">`; }
-    }
-
-    cleanup() { 
-        if (this.flipEntity) { this.flipEntity.remove(); this.flipEntity = null; }
-        // Remove any orphaned spread elements that might have been left behind
-        const orphans = this.container.querySelectorAll('.fb-spread');
-        orphans.forEach(el => {
-            if (el.id !== 'base-single-page' && el.id !== 'base-left-page' && el.id !== 'base-right-page') {
-                el.remove();
-            }
-        });
-    }
-
-    turnForward() {
-        if (this.isInteracting || !this.canGoForward()) return;
-        this.cleanup();
-        this.isInteracting = true; this.flipDirection = 'forward'; this.buildFlipEntity();
-        this.flipEntity.style.transition = 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
-        requestAnimationFrame(() => setTimeout(() => { if (this.flipEntity) this.flipEntity.style.transform = 'rotateY(-180deg)'; }, 20));
-        setTimeout(() => { if (this.flipEntity) this.flipEntity.style.zIndex = '3'; }, 300);
-        setTimeout(() => {
-            this.currentIndex = Math.min(this.currentIndex + 1, this.pages.length - 1);
-            this.cleanup(); this.renderVisiblePages(); this.app.updateThumbnails(); this.isInteracting = false;
-        }, 650);
-    }
-
-    turnBackward() {
-        if (this.isInteracting || !this.canGoBackward()) return;
-        this.cleanup();
-        this.isInteracting = true; this.flipDirection = 'backward'; this.buildFlipEntity();
-        this.flipEntity.style.transition = 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
-        requestAnimationFrame(() => setTimeout(() => { if (this.flipEntity) this.flipEntity.style.transform = 'rotateY(0deg)'; }, 20));
-        setTimeout(() => { if (this.flipEntity) this.flipEntity.style.zIndex = '5'; }, 300);
-        setTimeout(() => {
-            this.currentIndex = Math.max(0, this.currentIndex - 1);
-            this.cleanup(); this.renderVisiblePages(); this.app.updateThumbnails(); this.isInteracting = false;
-        }, 650);
-    }
-
-    goToPage(idx) {
-        if (this.isInteracting) return;
-        this.cleanup();
-        this.currentIndex = Math.max(0, Math.min(idx, this.pages.length - 1));
-        this.renderVisiblePages(); this.app.updateThumbnails();
-    }
-
-    renderVisiblePages() {
-        this.container.innerHTML = '';
-        if (this.isMobile) this.renderMobile(); else this.renderSpread();
-        this.updateIndicators(); this.updateNavButtons();
-    }
-
-    renderMobile() {
-        const base = document.createElement('div');
-        base.className = 'fb-spread'; base.id = 'base-single-page'; base.style.cssText = 'width:100%; right:auto; left:0; z-index:2;';
-        const face = document.createElement('div'); face.className = 'fb-face fb-face-right'; face.style.borderRadius = '6px';
-        face.innerHTML = this.pageImgHTML(this.currentIndex);
-        base.appendChild(face); this.container.appendChild(base);
-    }
-
-    renderSpread() {
-        const v = this.currentIndex; const leftContent = this.getLeftContent(v); const rightContent = this.getRightContent(v);
-        if (v !== 0) {
-            const baseL = document.createElement('div'); baseL.className = 'fb-spread'; baseL.id = 'base-left-page';
-            baseL.style.cssText = 'right:auto; left:0; transform-origin:right center; z-index:2;';
-            const fL = document.createElement('div'); fL.className = 'fb-face fb-face-left';
-            if (leftContent && leftContent !== 'blank' && leftContent.dataUrl) fL.innerHTML = `<img class="page-img" src="${leftContent.dataUrl}" draggable="false">`;
-            else fL.style.background = '#fafafa';
-            baseL.appendChild(fL); this.container.appendChild(baseL);
-        }
-        if (v !== this.pages.length - 1) {
-            const baseR = document.createElement('div'); baseR.className = 'fb-spread'; baseR.id = 'base-right-page'; baseR.style.zIndex = '2';
-            const fR = document.createElement('div'); fR.className = 'fb-face fb-face-right';
-            if (rightContent && rightContent.dataUrl) fR.innerHTML = `<img class="page-img" src="${rightContent.dataUrl}" draggable="false">`;
-            else fR.style.background = '#fafafa';
-            baseR.appendChild(fR); this.container.appendChild(baseR);
-        }
-    }
-
-    renderBackground() {
-        const nextV = this.flipDirection === 'forward' ? this.currentIndex + 1 : this.currentIndex - 1;
-        if (nextV < 0 || nextV >= this.pages.length) return;
-        if (this.isMobile) {
-            const bg = document.createElement('div'); bg.className = 'fb-spread'; bg.style.cssText = 'z-index:1; width:100%; right:auto; left:0;';
-            const f = document.createElement('div'); f.className = 'fb-face fb-face-right'; f.style.borderRadius = '6px';
-            f.innerHTML = this.pageImgHTML(nextV); bg.appendChild(f); this.container.appendChild(bg); return;
-        }
-        const nL = this.getLeftContent(nextV); const nR = this.getRightContent(nextV);
-        if (nextV !== 0 && nL) {
-            const bgL = document.createElement('div'); bgL.className = 'fb-spread'; bgL.style.cssText = 'right:auto; left:0; transform-origin:right center; z-index:1;';
-            const bfL = document.createElement('div'); bfL.className = 'fb-face fb-face-left';
-            if (nL !== 'blank' && nL.dataUrl) {
-                bfL.innerHTML = `<img class="page-img" src="${nL.dataUrl}" draggable="false">`;
-            } else {
-                bfL.style.background = '#fafafa';
-            }
-            bgL.appendChild(bfL); this.container.appendChild(bgL);
-        }
-        if (nextV !== this.pages.length - 1 && nR && nR.dataUrl) {
-            const bgR = document.createElement('div'); bgR.className = 'fb-spread'; bgR.style.zIndex = '1';
-            const bfR = document.createElement('div'); bfR.className = 'fb-face fb-face-right';
-            bfR.innerHTML = `<img class="page-img" src="${nR.dataUrl}" draggable="false">`;
-            bgR.appendChild(bfR); this.container.appendChild(bgR);
-        }
-    }
-
-    pageImgHTML(idx) { return (idx < 0 || idx >= this.pages.length) ? '' : `<img class="page-img" src="${this.pages[idx].dataUrl}" alt="Page ${idx + 1}" draggable="false">`; }
-    updateIndicators() { document.getElementById('current-page').textContent = this.currentIndex + 1; document.getElementById('total-page').textContent = this.pages.length; }
-    updateNavButtons() { document.getElementById('nav-prev').disabled = !this.canGoBackward(); document.getElementById('nav-next').disabled = !this.canGoForward(); }
-    setZoom(level) { this.zoomLevel = Math.max(0.5, Math.min(2, level)); this.container.style.transform = `scale(${this.zoomLevel})`; }
 }
 
 // Boot
