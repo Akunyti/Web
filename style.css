@@ -922,7 +922,7 @@ body {
         gap: 0;
     }
 
-    /* Clean, minimal navigation arrows for mobile */
+    /* Clean navigation arrows for mobile - No Background */
     .book-nav {
         position: absolute;
         top: 50%;
@@ -930,19 +930,22 @@ body {
         z-index: 100;
         background: transparent !important;
         border: none !important;
-        font-size: 2rem;
-        color: rgba(255, 255, 255, 0.85);
-        width: 40px;
-        height: 60px;
+        font-size: 2.2rem;
+        color: rgba(255, 255, 255, 0.6);
+        width: 50px;
+        height: 80px;
         border-radius: 0;
         backdrop-filter: none;
-        text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .book-nav:hover {
         background: transparent !important;
         color: white;
-        transform: translateY(-50%) scale(1.05);
+        transform: translateY(-50%) scale(1.1);
     }
 
     .book-nav.prev {

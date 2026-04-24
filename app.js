@@ -461,7 +461,7 @@ class FlipbookApp {
         
 
 
-        document.getElementById('btn-back-dash').style.display = 'flex'; // pastikan tombol back tampil
+        document.getElementById('btn-back-catalog').style.display = 'flex'; // pastikan tombol back tampil
         document.getElementById('book-title').textContent = fileRecord.name.replace(/\.pdf$/i, '');
         this.ui.viewerLoading.classList.remove('hidden');
         const loadText = document.getElementById('viewer-loading-text');
@@ -770,7 +770,8 @@ class BookManager {
             showCover: !this.isMobile,
             showPageCorners: false,
             mobileScrollSupport: false,
-            useMouseEvents: !this.isMobile, // Completely disable StPageFlip internal touch/mouse on mobile
+            useMouseEvents: !this.isMobile, 
+            mode: this.isMobile ? 'portrait' : 'landscape',
             usePortrait: this.isMobile
         });
 
