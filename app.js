@@ -668,8 +668,8 @@ class BookManager {
     }
 
     applyDynamicSize() {
-        const maxH = window.innerHeight - 160; 
-        const maxW = window.innerWidth * 0.88;
+        const maxH = Math.max(300, window.innerHeight - 160); 
+        const maxW = Math.max(300, window.innerWidth * 0.88);
         let pageH = maxH; 
         let pageW = pageH * this.pageAspect;
         
@@ -680,11 +680,11 @@ class BookManager {
             pageH *= scale; 
         }
         
-        this.container.style.width = (this.isMobile ? pageW : pageW * 2) + 'px';
-        this.container.style.height = pageH + 'px';
+        this.pageW = Math.round(pageW);
+        this.pageH = Math.round(pageH);
         
-        this.pageW = pageW;
-        this.pageH = pageH;
+        this.container.style.width = (this.isMobile ? this.pageW : this.pageW * 2) + 'px';
+        this.container.style.height = this.pageH + 'px';
     }
 
     initPageFlip() {
@@ -693,15 +693,22 @@ class BookManager {
         }
         
         this.container.innerHTML = '';
+        const pagesElements = [];
         this.pages.forEach((pageData, i) => {
             const pageDiv = document.createElement('div');
             pageDiv.className = 'my-page';
             pageDiv.style.backgroundColor = '#fafafa';
             pageDiv.innerHTML = `<div class="page-content" style="width:100%; height:100%; padding:0; margin:0; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);"><img src="${pageData.dataUrl}" style="width:100%; height:100%; object-fit:contain; pointer-events:none;" draggable="false"></div>`;
-            this.container.appendChild(pageDiv);
+            pagesElements.push(pageDiv);
         });
 
-        this.pageFlip = new StPageFlip.PageFlip(this.container, {
+        const PageFlipClass = (window.StPageFlip && window.StPageFlip.PageFlip) || (window.St && window.St.PageFlip);
+        if (!PageFlipClass) {
+            console.error("PageFlip library not found on window object.");
+            throw new Error("PageFlip library missing");
+        }
+
+        this.pageFlip = new PageFlipClass(this.container, {
             width: this.pageW,
             height: this.pageH,
             size: 'stretch',
