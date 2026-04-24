@@ -653,6 +653,18 @@ class BookManager {
             if (this.pageFlip) this.pageFlip.update();
         });
 
+        // Intercept touch events to prevent StPageFlip from breaking native pinch-to-zoom and panning
+        const touchInterceptor = (e) => {
+            // Check if zoomed in natively or if it's a multi-touch (pinch) gesture
+            const isZoomed = window.visualViewport && window.visualViewport.scale > 1.05;
+            if (e.touches.length > 1 || isZoomed) {
+                e.stopPropagation(); // Hide event from StPageFlip so it doesn't trigger swipe or preventDefault
+            }
+        };
+        
+        this.container.addEventListener('touchstart', touchInterceptor, { capture: true, passive: false });
+        this.container.addEventListener('touchmove', touchInterceptor, { capture: true, passive: false });
+
         this.initPageFlip();
         this.bindEvents();
     }
