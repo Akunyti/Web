@@ -695,8 +695,8 @@ class BookManager {
         this.pages.forEach((pageData, i) => {
             const pageDiv = document.createElement('div');
             pageDiv.className = 'my-page';
-            pageDiv.style.backgroundColor = '#fafafa';
-            pageDiv.innerHTML = `<div class="page-content" style="width:100%; height:100%; padding:0; margin:0; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);"><img src="${pageData.dataUrl}" style="width:100%; height:100%; object-fit:contain; pointer-events:none;" draggable="false"></div>`;
+            pageDiv.style.backgroundColor = 'transparent';
+            pageDiv.innerHTML = `<div class="page-content" style="width:100%; height:100%; padding:0; margin:0;"><img src="${pageData.dataUrl}" style="width:100%; height:100%; object-fit:contain; pointer-events:none;" draggable="false"></div>`;
             pagesElements.push(pageDiv);
         });
 
@@ -718,6 +718,7 @@ class BookManager {
             showCover: true,
             showPageCorners: false,
             mobileScrollSupport: true,
+            swipeDistance: 150,
             usePortrait: this.isMobile
         });
 

@@ -732,7 +732,7 @@ body {
 }
 
 .my-page {
-    background-color: #fafafa;
+    background-color: transparent;
 }
 
 .page-content {
@@ -922,26 +922,9 @@ body {
         gap: 0;
     }
 
-    /* Large overlapping arrows like in reference image */
+    /* Hide massive navigation arrows on mobile, rely on swipe instead */
     .book-nav {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 100;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        font-size: 3rem;
-        color: rgba(255, 255, 255, 0.7);
-        width: 60px;
-        height: 100px;
-        border-radius: 0;
-        backdrop-filter: none;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    }
-    
-    .book-nav::after {
-        display: none;
+        display: none !important;
     }
 
     .book-nav:hover {
