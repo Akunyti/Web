@@ -673,8 +673,16 @@ class BookManager {
         this.pageW = Math.round(pageW);
         this.pageH = Math.round(pageH);
         
-        this.container.style.width = (this.isMobile ? this.pageW : this.pageW * 2) + 'px';
-        this.container.style.height = this.pageH + 'px';
+        let containerW = this.isMobile ? this.pageW : this.pageW * 2;
+        let containerH = this.pageH;
+        
+        if (this.isMobile) {
+            // Force container height to be larger than width to trigger StPageFlip's portrait (1-page) mode
+            containerH = Math.max(this.pageH, this.pageW + 1);
+        }
+        
+        this.container.style.width = containerW + 'px';
+        this.container.style.height = containerH + 'px';
     }
 
     initPageFlip() {

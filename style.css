@@ -48,8 +48,6 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-main);
     color: var(--text-primary);
-    overflow: hidden;
-    overscroll-behavior: none;
     transition: background-color 0.4s, color 0.4s;
 }
 
@@ -677,7 +675,6 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
 }
 
 .book-wrapper {
