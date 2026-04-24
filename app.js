@@ -586,6 +586,9 @@ class FlipbookApp {
         const btnBackCatalog = document.getElementById('btn-back-catalog');
         if (btnBackCatalog) {
             btnBackCatalog.addEventListener('click', () => {
+                if (this.book && typeof this.book.destroy === 'function') {
+                    this.book.destroy();
+                }
                 this.book = null;
                 document.getElementById('flipbook-container').innerHTML = '';
                 document.getElementById('thumb-container').innerHTML = '';
@@ -653,17 +656,16 @@ class BookManager {
             if (this.pageFlip) this.pageFlip.update();
         });
 
-        // Intercept touch events to prevent StPageFlip from breaking native pinch-to-zoom and panning
-        const touchInterceptor = (e) => {
-            // Check if zoomed in natively or if it's a multi-touch (pinch) gesture
+        // Intercept touch events globally to prevent StPageFlip from breaking native pinch-to-zoom anywhere
+        this.touchInterceptor = (e) => {
             const isZoomed = window.visualViewport && window.visualViewport.scale > 1.05;
-            if (e.touches.length > 1 || isZoomed) {
-                e.stopPropagation(); // Hide event from StPageFlip so it doesn't trigger swipe or preventDefault
+            if (e.touches && (e.touches.length > 1 || isZoomed)) {
+                e.stopPropagation(); 
             }
         };
         
-        this.container.addEventListener('touchstart', touchInterceptor, { capture: true, passive: false });
-        this.container.addEventListener('touchmove', touchInterceptor, { capture: true, passive: false });
+        document.addEventListener('touchstart', this.touchInterceptor, { capture: true, passive: false });
+        document.addEventListener('touchmove', this.touchInterceptor, { capture: true, passive: false });
 
         this.initPageFlip();
         this.bindEvents();
@@ -718,16 +720,19 @@ class BookManager {
             throw new Error("PageFlip library missing");
         }
 
+        const baseW = this.pageW;
+        const baseH = this.isMobile ? Math.max(this.pageH, this.pageW + 1) : this.pageH;
+
         this.pageFlip = new PageFlipClass(this.container, {
-            width: this.pageW,
-            height: this.pageH,
+            width: baseW,
+            height: baseH,
             size: 'stretch',
             minWidth: 200,
             maxWidth: 2000,
             minHeight: 200,
             maxHeight: 2000,
             maxShadowOpacity: 0.5,
-            showCover: true,
+            showCover: !this.isMobile,
             showPageCorners: false,
             mobileScrollSupport: true,
             swipeDistance: 150,
@@ -785,6 +790,18 @@ class BookManager {
             if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); this.turnForward(); }
             else if (e.key === 'ArrowLeft') { e.preventDefault(); this.turnBackward(); }
         };
+    }
+
+    destroy() {
+        if (this.pageFlip) {
+            this.pageFlip.destroy();
+            this.pageFlip = null;
+        }
+        if (this.touchInterceptor) {
+            document.removeEventListener('touchstart', this.touchInterceptor, { capture: true, passive: false });
+            document.removeEventListener('touchmove', this.touchInterceptor, { capture: true, passive: false });
+        }
+        window.onresize = null; // Basic cleanup if needed, though we use addEventListener for resize above
     }
 }
 
