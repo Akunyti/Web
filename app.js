@@ -656,16 +656,51 @@ class BookManager {
             if (this.pageFlip) this.pageFlip.update();
         });
 
-        // Intercept touch events globally to prevent StPageFlip from breaking native pinch-to-zoom anywhere
-        this.touchInterceptor = (e) => {
-            const isZoomed = window.visualViewport && window.visualViewport.scale > 1.05;
-            if (e.touches && (e.touches.length > 1 || isZoomed)) {
-                e.stopPropagation(); 
+        // Ultimate custom passive gesture handler for mobile to completely separate swipe and zoom
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchTime = 0;
+        let maxTouches = 0;
+
+        this.touchStartHandler = (e) => {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchTime = Date.now();
+                maxTouches = 1;
+            } else {
+                maxTouches = Math.max(maxTouches, e.touches.length);
             }
         };
-        
-        document.addEventListener('touchstart', this.touchInterceptor, { capture: true, passive: false });
-        document.addEventListener('touchmove', this.touchInterceptor, { capture: true, passive: false });
+
+        this.touchMoveHandler = (e) => {
+            maxTouches = Math.max(maxTouches, e.touches.length);
+        };
+
+        this.touchEndHandler = (e) => {
+            if (!this.isMobile) return;
+            
+            // Only trigger swipe if there was strictly 1 touch finger throughout the gesture
+            if (maxTouches === 1 && e.changedTouches.length === 1) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const dx = touchEndX - touchStartX;
+                const dy = touchEndY - touchStartY;
+                const dt = Date.now() - touchTime;
+                
+                const isZoomed = window.visualViewport && window.visualViewport.scale > 1.05;
+                
+                // If it's a fast horizontal swipe, NOT natively zoomed in, and dominant horizontal direction
+                if (!isZoomed && dt < 400 && Math.abs(dx) > 40 && Math.abs(dy) < Math.abs(dx)) {
+                    if (dx < 0) this.turnForward();
+                    else this.turnBackward();
+                }
+            }
+        };
+
+        document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+        document.addEventListener('touchmove', this.touchMoveHandler, { passive: true });
+        document.addEventListener('touchend', this.touchEndHandler, { passive: true });
 
         this.initPageFlip();
         this.bindEvents();
@@ -734,8 +769,8 @@ class BookManager {
             maxShadowOpacity: 0.5,
             showCover: !this.isMobile,
             showPageCorners: false,
-            mobileScrollSupport: true,
-            swipeDistance: 150,
+            mobileScrollSupport: false,
+            useMouseEvents: !this.isMobile, // Completely disable StPageFlip internal touch/mouse on mobile
             usePortrait: this.isMobile
         });
 
@@ -797,11 +832,10 @@ class BookManager {
             this.pageFlip.destroy();
             this.pageFlip = null;
         }
-        if (this.touchInterceptor) {
-            document.removeEventListener('touchstart', this.touchInterceptor, { capture: true, passive: false });
-            document.removeEventListener('touchmove', this.touchInterceptor, { capture: true, passive: false });
-        }
-        window.onresize = null; // Basic cleanup if needed, though we use addEventListener for resize above
+        document.removeEventListener('touchstart', this.touchStartHandler);
+        document.removeEventListener('touchmove', this.touchMoveHandler);
+        document.removeEventListener('touchend', this.touchEndHandler);
+        window.onresize = null;
     }
 }
 

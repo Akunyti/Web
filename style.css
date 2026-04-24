@@ -922,24 +922,26 @@ body {
         gap: 0;
     }
 
-    /* Elegant navigation arrows for mobile */
+    /* Clean, minimal navigation arrows for mobile */
     .book-nav {
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
         z-index: 100;
-        background: rgba(0, 0, 0, 0.4) !important;
+        background: transparent !important;
         border: none !important;
-        font-size: 1.5rem;
-        color: white;
+        font-size: 2rem;
+        color: rgba(255, 255, 255, 0.85);
         width: 40px;
         height: 60px;
-        border-radius: 8px;
-        backdrop-filter: blur(4px);
+        border-radius: 0;
+        backdrop-filter: none;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.6);
     }
 
     .book-nav:hover {
-        background: rgba(0, 0, 0, 0.6) !important;
+        background: transparent !important;
+        color: white;
         transform: translateY(-50%) scale(1.05);
     }
 
