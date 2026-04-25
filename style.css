@@ -929,10 +929,14 @@ body {
         gap: 0;
     }
 
-    /* Flipbook container: object-based transform */
+    /* Flipbook container fills stage on mobile */
     #flipbook-container {
-        transform-origin: center center;
-        will-change: transform;
+        width: 100% !important;
+        height: 100% !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
     }
 
     /* Clean, minimal navigation arrows — no background, translucent */
