@@ -49,6 +49,9 @@ body {
     background-color: var(--bg-main);
     color: var(--text-primary);
     transition: background-color 0.4s, color 0.4s;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .hidden {
@@ -874,12 +877,13 @@ body {
         width: 100%;
     }
 
-    /* Redesign Viewer UI for Mobile (Pop-up Fullscreen style) */
+    /* Mobile Viewer: full-viewport single-page experience */
     #app {
         height: 100dvh;
+        overflow: hidden;
     }
 
-    /* Move top-bar to bottom for mobile to match reference */
+    /* Bottom toolbar for mobile */
     #top-bar {
         position: fixed;
         bottom: 0;
@@ -888,7 +892,8 @@ body {
         right: 0;
         height: var(--topbar-height);
         background: var(--glass-bg);
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border-top: 1px solid var(--glass-border);
         border-bottom: none;
         padding: 0 10px;
@@ -900,16 +905,18 @@ body {
         position: fixed;
         bottom: 0;
         top: auto;
-        opacity: 1; /* Keep toolbar visible */
+        opacity: 1;
     }
 
     .nav-left .book-title {
-        display: none; /* Hide title to save space */
+        display: none;
     }
 
     #book-stage {
         height: calc(100dvh - var(--topbar-height));
         margin-top: 0;
+        overflow: hidden;
+        touch-action: none; /* We manage all gestures ourselves */
     }
 
     #app.fullscreen #book-stage {
@@ -922,40 +929,58 @@ body {
         gap: 0;
     }
 
-    /* Clean navigation arrows for mobile - No Background */
+    /* Flipbook container: object-based transform */
+    #flipbook-container {
+        transform-origin: center center;
+        will-change: transform;
+    }
+
+    /* Clean, minimal navigation arrows — no background, translucent */
     .book-nav {
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
         z-index: 100;
-        background: transparent !important;
+        background: none !important;
         border: none !important;
-        font-size: 2.2rem;
-        color: rgba(255, 255, 255, 0.6);
-        width: 50px;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        font-size: 1.6rem;
+        color: rgba(255, 255, 255, 0.5);
+        width: 44px;
         height: 80px;
         border-radius: 0;
-        backdrop-filter: none;
-        text-shadow: 0 0 10px rgba(0,0,0,0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        transition: color 0.2s ease, opacity 0.25s ease;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    .book-nav:hover {
-        background: transparent !important;
-        color: white;
-        transform: translateY(-50%) scale(1.1);
+    .book-nav::after {
+        /* Enlarge hit area without visual change */
+        content: '';
+        position: absolute;
+        inset: -16px -12px;
+    }
+
+    .book-nav:hover,
+    .book-nav:active {
+        background: none !important;
+        color: rgba(255, 255, 255, 0.85);
+        transform: translateY(-50%);
+        box-shadow: none !important;
     }
 
     .book-nav.prev {
-        left: 8px;
-        justify-content: center;
+        left: 4px;
     }
 
     .book-nav.next {
-        right: 8px;
-        justify-content: center;
+        right: 4px;
+    }
+
+    /* Hide arrows when zoomed in */
+    #book-stage.is-zoomed .book-nav {
+        opacity: 0;
+        pointer-events: none;
     }
 
     #thumbnail-dock {

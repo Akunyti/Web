@@ -461,7 +461,7 @@ class FlipbookApp {
         
 
 
-        document.getElementById('btn-back-catalog').style.display = 'flex'; // pastikan tombol back tampil
+        document.getElementById('btn-back-dash').style.display = 'flex'; // pastikan tombol back tampil
         document.getElementById('book-title').textContent = fileRecord.name.replace(/\.pdf$/i, '');
         this.ui.viewerLoading.classList.remove('hidden');
         const loadText = document.getElementById('viewer-loading-text');
@@ -586,13 +586,24 @@ class FlipbookApp {
         const btnBackCatalog = document.getElementById('btn-back-catalog');
         if (btnBackCatalog) {
             btnBackCatalog.addEventListener('click', () => {
+                // Full cleanup: destroy book, reset all viewer state
                 if (this.book && typeof this.book.destroy === 'function') {
                     this.book.destroy();
                 }
                 this.book = null;
-                document.getElementById('flipbook-container').innerHTML = '';
+                const fc = document.getElementById('flipbook-container');
+                if (fc) { fc.innerHTML = ''; fc.style.transform = ''; fc.style.transition = ''; }
                 document.getElementById('thumb-container').innerHTML = '';
-                this.checkCatalogOrLogin();
+                
+                // Smooth fade transition back to catalog
+                const appEl = this.ui.appScreen;
+                appEl.style.transition = 'opacity 0.3s ease';
+                appEl.style.opacity = '0';
+                setTimeout(() => {
+                    appEl.style.opacity = '';
+                    appEl.style.transition = '';
+                    this.checkCatalogOrLogin();
+                }, 300);
             });
         }
 
@@ -622,8 +633,8 @@ class FlipbookApp {
             }
         });
 
-        document.getElementById('btn-zoom-in').addEventListener('click', () => { if (this.book) this.book.setZoom(this.book.zoomLevel + 0.15); });
-        document.getElementById('btn-zoom-out').addEventListener('click', () => { if (this.book) this.book.setZoom(this.book.zoomLevel - 0.15); });
+        document.getElementById('btn-zoom-in').addEventListener('click', () => { if (this.book) this.book.setZoom(this.book.zoomLevel + 0.25); });
+        document.getElementById('btn-zoom-out').addEventListener('click', () => { if (this.book) this.book.setZoom(this.book.zoomLevel - 0.25); });
 
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
@@ -635,101 +646,222 @@ class FlipbookApp {
 }
 
 // ==================================================
-// Book Manager (Fisika Flipbook tetap sama)
+// Book Manager — Object-based mobile interaction
 // ==================================================
 class BookManager {
     constructor(app, pages) {
-        this.app = app; this.pages = pages; this.currentIndex = 0;
+        this.app = app;
+        this.pages = pages;
+        this.currentIndex = 0;
         this.container = document.getElementById('flipbook-container');
+        this.stage = document.getElementById('book-stage');
         this.zoomLevel = 1;
+        this.panX = 0;
+        this.panY = 0;
         this.pageAspect = pages[0] ? (pages[0].width / pages[0].height) : (4 / 3);
         this.isMobile = window.innerWidth <= 850;
-        
+
+        // Mobile gesture state
+        this._gestureState = null; // null | 'swipe' | 'pinch' | 'pan'
+        this._touchStartX = 0;
+        this._touchStartY = 0;
+        this._touchStartTime = 0;
+        this._maxTouches = 0;
+        this._initialPinchDist = 0;
+        this._initialZoom = 1;
+        this._initialPanX = 0;
+        this._initialPanY = 0;
+        this._pinchMidX = 0;
+        this._pinchMidY = 0;
+        this._swipeLocked = false;
+
         // Clean container
         this.container.innerHTML = '';
-        
+
         this.applyDynamicSize();
-        
-        window.addEventListener('resize', () => {
+
+        this._resizeHandler = () => {
             this.isMobile = window.innerWidth <= 850;
             this.applyDynamicSize();
             if (this.pageFlip) this.pageFlip.update();
-        });
-
-        // Ultimate custom passive gesture handler for mobile to completely separate swipe and zoom
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchTime = 0;
-        let maxTouches = 0;
-
-        this.touchStartHandler = (e) => {
-            if (e.touches.length === 1) {
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-                touchTime = Date.now();
-                maxTouches = 1;
-            } else {
-                maxTouches = Math.max(maxTouches, e.touches.length);
-            }
         };
+        window.addEventListener('resize', this._resizeHandler);
 
-        this.touchMoveHandler = (e) => {
-            maxTouches = Math.max(maxTouches, e.touches.length);
-        };
-
-        this.touchEndHandler = (e) => {
-            if (!this.isMobile) return;
-            
-            // Only trigger swipe if there was strictly 1 touch finger throughout the gesture
-            if (maxTouches === 1 && e.changedTouches.length === 1) {
-                const touchEndX = e.changedTouches[0].clientX;
-                const touchEndY = e.changedTouches[0].clientY;
-                const dx = touchEndX - touchStartX;
-                const dy = touchEndY - touchStartY;
-                const dt = Date.now() - touchTime;
-                
-                const isZoomed = window.visualViewport && window.visualViewport.scale > 1.05;
-                
-                // If it's a fast horizontal swipe, NOT natively zoomed in, and dominant horizontal direction
-                if (!isZoomed && dt < 400 && Math.abs(dx) > 40 && Math.abs(dy) < Math.abs(dx)) {
-                    if (dx < 0) this.turnForward();
-                    else this.turnBackward();
-                }
-            }
-        };
-
-        document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
-        document.addEventListener('touchmove', this.touchMoveHandler, { passive: true });
-        document.addEventListener('touchend', this.touchEndHandler, { passive: true });
-
+        this._bindMobileGestures();
         this.initPageFlip();
         this.bindEvents();
     }
 
-    applyDynamicSize() {
-        const maxH = Math.max(300, window.innerHeight - 160); 
-        const maxW = Math.max(300, window.innerWidth * 0.88);
-        let pageH = maxH; 
-        let pageW = pageH * this.pageAspect;
-        
-        const spreadW = this.isMobile ? pageW : pageW * 2;
-        if (spreadW > maxW) { 
-            const scale = maxW / spreadW; 
-            pageW *= scale; 
-            pageH *= scale; 
+    // --- Mobile gesture system: pinch=zoom, drag=pan, swipe=navigate ---
+    _bindMobileGestures() {
+        this.touchStartHandler = (e) => {
+            if (!this.isMobile) return;
+            const stage = this.stage;
+            if (!stage || !stage.contains(e.target)) return;
+
+            this._maxTouches = e.touches.length;
+            this._gestureState = null;
+
+            if (e.touches.length === 1) {
+                this._touchStartX = e.touches[0].clientX;
+                this._touchStartY = e.touches[0].clientY;
+                this._touchStartTime = Date.now();
+                this._swipeLocked = false;
+            } else if (e.touches.length === 2) {
+                // Start pinch
+                this._gestureState = 'pinch';
+                this._swipeLocked = true;
+                const dx = e.touches[1].clientX - e.touches[0].clientX;
+                const dy = e.touches[1].clientY - e.touches[0].clientY;
+                this._initialPinchDist = Math.hypot(dx, dy);
+                this._initialZoom = this.zoomLevel;
+                this._initialPanX = this.panX;
+                this._initialPanY = this.panY;
+                this._pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                this._pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            }
+        };
+
+        this.touchMoveHandler = (e) => {
+            if (!this.isMobile) return;
+            const stage = this.stage;
+            if (!stage) return;
+            this._maxTouches = Math.max(this._maxTouches, e.touches.length);
+
+            if (e.touches.length === 2) {
+                // Pinch zoom
+                e.preventDefault();
+                this._gestureState = 'pinch';
+                this._swipeLocked = true;
+                const dx = e.touches[1].clientX - e.touches[0].clientX;
+                const dy = e.touches[1].clientY - e.touches[0].clientY;
+                const dist = Math.hypot(dx, dy);
+                const scale = dist / this._initialPinchDist;
+                const newZoom = Math.max(1, Math.min(4, this._initialZoom * scale));
+
+                // Pan follows pinch midpoint shift
+                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const panDx = midX - this._pinchMidX;
+                const panDy = midY - this._pinchMidY;
+
+                this.zoomLevel = newZoom;
+                this.panX = this._initialPanX + panDx;
+                this.panY = this._initialPanY + panDy;
+                this._applyTransform();
+            } else if (e.touches.length === 1 && !this._swipeLocked) {
+                const dx = e.touches[0].clientX - this._touchStartX;
+                const dy = e.touches[0].clientY - this._touchStartY;
+
+                if (this.zoomLevel > 1.05) {
+                    // Pan mode when zoomed in
+                    if (!this._gestureState) this._gestureState = 'pan';
+                    if (this._gestureState === 'pan') {
+                        e.preventDefault();
+                        this.panX = this._initialPanX + dx;
+                        this.panY = this._initialPanY + dy;
+                        this._applyTransform();
+                    }
+                }
+                // If not zoomed, let it fall through to swipe detection on touchend
+            }
+        };
+
+        this.touchEndHandler = (e) => {
+            if (!this.isMobile) return;
+
+            // After pinch ends, update pan base for follow-up single-finger pan
+            if (this._gestureState === 'pinch') {
+                this._initialPanX = this.panX;
+                this._initialPanY = this.panY;
+                // If zoomed back to ~1x, snap reset
+                if (this.zoomLevel <= 1.05) {
+                    this.resetZoom(true);
+                }
+                this._gestureState = null;
+                return;
+            }
+
+            if (this._gestureState === 'pan') {
+                this._initialPanX = this.panX;
+                this._initialPanY = this.panY;
+                this._gestureState = null;
+                return;
+            }
+
+            // Swipe detection: only when at 1x zoom, single finger, fast horizontal
+            if (this._maxTouches === 1 && !this._swipeLocked && e.changedTouches.length === 1) {
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const dx = endX - this._touchStartX;
+                const dy = endY - this._touchStartY;
+                const dt = Date.now() - this._touchStartTime;
+                const isZoomed = this.zoomLevel > 1.05;
+
+                if (!isZoomed && dt < 450 && Math.abs(dx) > 35 && Math.abs(dy) < Math.abs(dx) * 0.8) {
+                    if (dx < 0) this.turnForward();
+                    else this.turnBackward();
+                }
+            }
+
+            this._gestureState = null;
+        };
+
+        // Use non-passive for touchmove so we can preventDefault on pinch/pan
+        this.stage.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+        this.stage.addEventListener('touchmove', this.touchMoveHandler, { passive: false });
+        this.stage.addEventListener('touchend', this.touchEndHandler, { passive: true });
+    }
+
+    _applyTransform() {
+        // Clamp pan to prevent losing the object off-screen
+        const maxPan = (this.zoomLevel - 1) * 300;
+        this.panX = Math.max(-maxPan, Math.min(maxPan, this.panX));
+        this.panY = Math.max(-maxPan, Math.min(maxPan, this.panY));
+        this.container.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+        this.container.style.transformOrigin = 'center center';
+
+        // Toggle a CSS class so nav arrows hide when zoomed
+        this.stage.classList.toggle('is-zoomed', this.zoomLevel > 1.05);
+    }
+
+    resetZoom(animate = false) {
+        this.zoomLevel = 1;
+        this.panX = 0;
+        this.panY = 0;
+        this._initialPanX = 0;
+        this._initialPanY = 0;
+        if (animate) {
+            this.container.style.transition = 'transform 0.3s cubic-bezier(.25,.8,.25,1)';
+            setTimeout(() => { this.container.style.transition = ''; }, 320);
         }
-        
+        this._applyTransform();
+    }
+
+    applyDynamicSize() {
+        const topbarH = this.isMobile ? 60 : 0;
+        const maxH = Math.max(300, window.innerHeight - 160 - topbarH);
+        const maxW = Math.max(300, window.innerWidth * (this.isMobile ? 0.96 : 0.88));
+        let pageH = maxH;
+        let pageW = pageH * this.pageAspect;
+
+        const spreadW = this.isMobile ? pageW : pageW * 2;
+        if (spreadW > maxW) {
+            const scale = maxW / spreadW;
+            pageW *= scale;
+            pageH *= scale;
+        }
+
         this.pageW = Math.round(pageW);
         this.pageH = Math.round(pageH);
-        
+
         let containerW = this.isMobile ? this.pageW : this.pageW * 2;
         let containerH = this.pageH;
-        
+
         if (this.isMobile) {
-            // Force container height to be larger than width to trigger StPageFlip's portrait (1-page) mode
             containerH = Math.max(this.pageH, this.pageW + 1);
         }
-        
+
         this.container.style.width = containerW + 'px';
         this.container.style.height = containerH + 'px';
     }
@@ -738,14 +870,14 @@ class BookManager {
         if (this.pageFlip) {
             this.pageFlip.destroy();
         }
-        
+
         this.container.innerHTML = '';
         const pagesElements = [];
-        this.pages.forEach((pageData, i) => {
+        this.pages.forEach((pageData) => {
             const pageDiv = document.createElement('div');
             pageDiv.className = 'my-page';
             pageDiv.style.backgroundColor = 'transparent';
-            pageDiv.innerHTML = `<div class="page-content" style="width:100%; height:100%; padding:0; margin:0;"><img src="${pageData.dataUrl}" style="width:100%; height:100%; object-fit:contain; pointer-events:none;" draggable="false"></div>`;
+            pageDiv.innerHTML = `<div class="page-content" style="width:100%;height:100%;padding:0;margin:0;"><img src="${pageData.dataUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;" draggable="false"></div>`;
             pagesElements.push(pageDiv);
         });
 
@@ -766,12 +898,11 @@ class BookManager {
             maxWidth: 2000,
             minHeight: 200,
             maxHeight: 2000,
-            maxShadowOpacity: 0.5,
+            maxShadowOpacity: this.isMobile ? 0.2 : 0.5,
             showCover: !this.isMobile,
             showPageCorners: false,
             mobileScrollSupport: false,
-            useMouseEvents: !this.isMobile, 
-            mode: this.isMobile ? 'portrait' : 'landscape',
+            useMouseEvents: !this.isMobile,
             usePortrait: this.isMobile
         });
 
@@ -783,7 +914,7 @@ class BookManager {
             this.updateNavButtons();
             this.app.updateThumbnails();
         });
-        
+
         this.updateIndicators();
         this.updateNavButtons();
     }
@@ -799,23 +930,30 @@ class BookManager {
     goToPage(idx) {
         if (this.pageFlip) this.pageFlip.flip(idx);
     }
-    
-    // Stub to maintain compatibility with FlipbookApp calls
-    renderVisiblePages() {} 
 
-    updateIndicators() { 
-        document.getElementById('current-page').textContent = this.currentIndex + 1; 
-        document.getElementById('total-page').textContent = this.pages.length; 
+    renderVisiblePages() {}
+
+    updateIndicators() {
+        document.getElementById('current-page').textContent = this.currentIndex + 1;
+        document.getElementById('total-page').textContent = this.pages.length;
     }
-    
-    updateNavButtons() { 
-        document.getElementById('nav-prev').disabled = this.currentIndex === 0; 
-        document.getElementById('nav-next').disabled = this.currentIndex >= this.pages.length - 1; 
+
+    updateNavButtons() {
+        document.getElementById('nav-prev').disabled = this.currentIndex === 0;
+        document.getElementById('nav-next').disabled = this.currentIndex >= this.pages.length - 1;
     }
-    
-    setZoom(level) { 
-        this.zoomLevel = Math.max(0.5, Math.min(2, level)); 
-        this.container.style.transform = `scale(${this.zoomLevel})`; 
+
+    setZoom(level) {
+        this.zoomLevel = Math.max(1, Math.min(4, level));
+        if (this.zoomLevel <= 1.05) {
+            this.resetZoom(true);
+        } else {
+            this.panX = 0;
+            this.panY = 0;
+            this._initialPanX = 0;
+            this._initialPanY = 0;
+            this._applyTransform();
+        }
     }
 
     bindEvents() {
@@ -833,10 +971,17 @@ class BookManager {
             this.pageFlip.destroy();
             this.pageFlip = null;
         }
-        document.removeEventListener('touchstart', this.touchStartHandler);
-        document.removeEventListener('touchmove', this.touchMoveHandler);
-        document.removeEventListener('touchend', this.touchEndHandler);
-        window.onresize = null;
+        // Remove gesture listeners from stage
+        if (this.stage) {
+            this.stage.removeEventListener('touchstart', this.touchStartHandler);
+            this.stage.removeEventListener('touchmove', this.touchMoveHandler);
+            this.stage.removeEventListener('touchend', this.touchEndHandler);
+            this.stage.classList.remove('is-zoomed');
+        }
+        // Reset transform
+        this.container.style.transform = '';
+        this.container.style.transition = '';
+        window.removeEventListener('resize', this._resizeHandler);
     }
 }
 
