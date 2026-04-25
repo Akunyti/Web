@@ -1,6 +1,6 @@
 // ==================================================
 // Mobile Single-Page Viewer
-// AnyFlip-style horizontal slide transitions
+// AnyFlip-style 3D page-flip animation
 // ==================================================
 class MobileViewer {
     constructor(bookManager) {
@@ -23,7 +23,7 @@ class MobileViewer {
         this._initialPanY = 0;
         this._pinchMidX = 0;
         this._pinchMidY = 0;
-        this._dragDx = 0; // live drag offset for interactive swipe
+        this._dragDx = 0;
 
         this.zoomLevel = 1;
         this.panX = 0;
@@ -39,21 +39,21 @@ class MobileViewer {
         this.container.style.cssText = `
             width: 100%; height: 100%; position: relative;
             overflow: hidden; display: flex; align-items: center;
-            justify-content: center;
+            justify-content: center; perspective: 1800px;
         `;
 
-        // Slider track — holds current (and temporarily next/prev) page
-        this.track = document.createElement('div');
-        this.track.style.cssText = `
-            position: absolute; inset: 0;
+        // Flip stage — holds the page cards
+        this.flipStage = document.createElement('div');
+        this.flipStage.style.cssText = `
+            position: relative; width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
-            will-change: transform;
+            transform-style: preserve-3d;
         `;
-        this.container.appendChild(this.track);
+        this.container.appendChild(this.flipStage);
 
         // Current page image
         this.pageImg = this._createImg();
-        this.track.appendChild(this.pageImg);
+        this.flipStage.appendChild(this.pageImg);
     }
 
     _createImg() {
@@ -63,7 +63,8 @@ class MobileViewer {
             max-width: 100%; max-height: 100%;
             object-fit: contain; pointer-events: none;
             user-select: none; -webkit-user-select: none;
-            flex-shrink: 0;
+            flex-shrink: 0; backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         `;
         return img;
     }
@@ -72,57 +73,99 @@ class MobileViewer {
         this.currentIndex = idx;
         this.bm.currentIndex = idx;
         this.pageImg.src = this.pages[idx].dataUrl;
-        this.track.style.transform = 'translateX(0)';
         this.bm.updateIndicators();
         this.bm.updateNavButtons();
         this.bm.app.updateThumbnails();
     }
 
-    // --- AnyFlip-style horizontal slide transition ---
-    _slideTo(newIdx, direction) {
-        // direction: 'left' = next page, 'right' = prev page
+    // --- AnyFlip-style 3D page-flip transition ---
+    _flipTo(newIdx, direction) {
         if (this._isAnimating) return;
         if (newIdx < 0 || newIdx >= this.pages.length) return;
         this._isAnimating = true;
 
-        const containerW = this.container.offsetWidth;
+        const FLIP_DURATION = 600; // ms
 
-        // Create incoming page image
-        const incoming = this._createImg();
-        incoming.src = this.pages[newIdx].dataUrl;
-        incoming.style.position = 'absolute';
-        incoming.style.maxWidth = '100%';
-        incoming.style.maxHeight = '100%';
+        // Create a flip card element that holds front (current) and back (new)
+        const flipCard = document.createElement('div');
+        flipCard.style.cssText = `
+            position: absolute; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            transform-style: preserve-3d;
+            transition: transform ${FLIP_DURATION}ms cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform-origin: ${direction === 'left' ? 'left center' : 'right center'};
+        `;
 
-        // Position incoming off-screen
-        if (direction === 'left') {
-            // Next: incoming starts to the right
-            incoming.style.left = containerW + 'px';
-        } else {
-            // Prev: incoming starts to the left
-            incoming.style.left = -containerW + 'px';
-        }
+        // Front face: current page
+        const front = this._createImg();
+        front.src = this.pages[this.currentIndex].dataUrl;
+        front.style.position = 'absolute';
+        front.style.maxWidth = '100%';
+        front.style.maxHeight = '100%';
+        front.style.backfaceVisibility = 'hidden';
+        front.style.webkitBackfaceVisibility = 'hidden';
+        front.style.zIndex = '2';
 
-        this.track.style.transition = 'none';
-        this.track.appendChild(incoming);
+        // Back face: next page (mirrored)
+        const back = this._createImg();
+        back.src = this.pages[newIdx].dataUrl;
+        back.style.position = 'absolute';
+        back.style.maxWidth = '100%';
+        back.style.maxHeight = '100%';
+        back.style.backfaceVisibility = 'hidden';
+        back.style.webkitBackfaceVisibility = 'hidden';
+        back.style.transform = direction === 'left' ? 'rotateY(180deg)' : 'rotateY(-180deg)';
+        back.style.zIndex = '1';
 
-        // Force reflow to ensure position is applied before animation
-        void this.track.offsetWidth;
+        flipCard.appendChild(front);
+        flipCard.appendChild(back);
 
-        // Animate slide
-        const slideDistance = direction === 'left' ? -containerW : containerW;
-        this.track.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        this.track.style.transform = `translateX(${slideDistance}px)`;
+        // Underneath: the new page revealed as the card flips
+        const underneath = this._createImg();
+        underneath.src = this.pages[newIdx].dataUrl;
+        underneath.style.position = 'absolute';
+        underneath.style.maxWidth = '100%';
+        underneath.style.maxHeight = '100%';
+        underneath.style.zIndex = '0';
 
+        // Hide current page, show flip card + underneath
+        this.pageImg.style.opacity = '0';
+        this.flipStage.appendChild(underneath);
+        this.flipStage.appendChild(flipCard);
+
+        // Force reflow
+        void flipCard.offsetWidth;
+
+        // Add shadow overlay for depth
+        const shadow = document.createElement('div');
+        shadow.style.cssText = `
+            position: absolute; inset: 0; z-index: 3;
+            background: linear-gradient(${direction === 'left' ? 'to right' : 'to left'},
+                rgba(0,0,0,0.15) 0%, transparent 40%);
+            opacity: 0;
+            transition: opacity ${FLIP_DURATION}ms ease;
+            pointer-events: none;
+        `;
+        this.flipStage.appendChild(shadow);
+
+        // Trigger the flip
+        requestAnimationFrame(() => {
+            flipCard.style.transform = direction === 'left'
+                ? 'rotateY(-180deg)'
+                : 'rotateY(180deg)';
+            shadow.style.opacity = '1';
+        });
+
+        // Cleanup after animation
         const onDone = () => {
-            this.track.removeEventListener('transitionend', onDone);
-            // Swap: remove old, reset track
-            this.track.style.transition = 'none';
-            this.track.style.transform = 'translateX(0)';
+            // Set main image to new page
             this.pageImg.src = this.pages[newIdx].dataUrl;
+            this.pageImg.style.opacity = '1';
 
-            // Remove incoming element
-            if (incoming.parentNode) incoming.parentNode.removeChild(incoming);
+            // Remove temporary elements
+            if (flipCard.parentNode) flipCard.parentNode.removeChild(flipCard);
+            if (underneath.parentNode) underneath.parentNode.removeChild(underneath);
+            if (shadow.parentNode) shadow.parentNode.removeChild(shadow);
 
             this.currentIndex = newIdx;
             this.bm.currentIndex = newIdx;
@@ -132,25 +175,25 @@ class MobileViewer {
             this._isAnimating = false;
         };
 
-        this.track.addEventListener('transitionend', onDone, { once: true });
+        flipCard.addEventListener('transitionend', (e) => {
+            if (e.propertyName === 'transform') onDone();
+        }, { once: true });
 
-        // Safety timeout in case transitionend doesn't fire
-        setTimeout(() => {
-            if (this._isAnimating) onDone();
-        }, 450);
+        // Safety timeout
+        setTimeout(() => { if (this._isAnimating) onDone(); }, FLIP_DURATION + 100);
     }
 
     next() {
         if (this.currentIndex < this.pages.length - 1) {
             this.resetZoom(false);
-            this._slideTo(this.currentIndex + 1, 'left');
+            this._flipTo(this.currentIndex + 1, 'left');
         }
     }
 
     prev() {
         if (this.currentIndex > 0) {
             this.resetZoom(false);
-            this._slideTo(this.currentIndex - 1, 'right');
+            this._flipTo(this.currentIndex - 1, 'right');
         }
     }
 
@@ -158,7 +201,7 @@ class MobileViewer {
         if (idx === this.currentIndex || this._isAnimating) return;
         this.resetZoom(false);
         const dir = idx > this.currentIndex ? 'left' : 'right';
-        this._slideTo(idx, dir);
+        this._flipTo(idx, dir);
     }
 
     // --- Zoom & Pan (for pinch-to-zoom) ---
@@ -267,20 +310,36 @@ class MobileViewer {
                         this._applyTransform();
                     }
                 } else {
-                    // Interactive drag — follow finger horizontally (AnyFlip feel)
+                    // Detect horizontal drag for interactive page curl preview
                     if (Math.abs(dx) > 10 && Math.abs(dy) < Math.abs(dx) * 1.2) {
                         if (!this._gestureState) this._gestureState = 'drag';
                     }
                     if (this._gestureState === 'drag') {
                         e.preventDefault();
-                        // Apply resistance at boundaries
-                        let clampedDx = dx;
-                        if ((dx > 0 && this.currentIndex === 0) || (dx < 0 && this.currentIndex >= this.pages.length - 1)) {
-                            clampedDx = dx * 0.2; // rubber-band effect
+                        this._dragDx = dx;
+                        // Interactive curl: slight rotation following the finger
+                        const containerW = this.container.offsetWidth;
+                        const progress = Math.min(1, Math.abs(dx) / (containerW * 0.5));
+                        const maxAngle = 25; // degrees
+                        if (dx < 0 && this.currentIndex < this.pages.length - 1) {
+                            // Dragging left — preview next page flip
+                            const angle = progress * maxAngle;
+                            this.pageImg.style.transition = 'none';
+                            this.pageImg.style.transformOrigin = 'right center';
+                            this.pageImg.style.transform = `perspective(1800px) rotateY(${-angle}deg)`;
+                        } else if (dx > 0 && this.currentIndex > 0) {
+                            // Dragging right — preview prev page flip
+                            const angle = progress * maxAngle;
+                            this.pageImg.style.transition = 'none';
+                            this.pageImg.style.transformOrigin = 'left center';
+                            this.pageImg.style.transform = `perspective(1800px) rotateY(${angle}deg)`;
+                        } else {
+                            // At boundary — rubber band
+                            const rubberDx = dx * 0.15;
+                            this.pageImg.style.transition = 'none';
+                            this.pageImg.style.transformOrigin = 'center center';
+                            this.pageImg.style.transform = `translateX(${rubberDx}px)`;
                         }
-                        this._dragDx = clampedDx;
-                        this.track.style.transition = 'none';
-                        this.track.style.transform = `translateX(${clampedDx}px)`;
                     }
                 }
             }
@@ -303,25 +362,25 @@ class MobileViewer {
                 return;
             }
 
-            // Interactive drag release — decide: navigate or snap back
+            // Interactive drag release
             if (this._gestureState === 'drag') {
                 const dx = this._dragDx;
                 const dt = Date.now() - this._touchStartTime;
-                const velocity = Math.abs(dx) / dt; // px/ms
-                const threshold = this.container.offsetWidth * 0.2;
+                const velocity = Math.abs(dx) / dt;
+                const threshold = this.container.offsetWidth * 0.15;
                 const isSwipeFast = velocity > 0.3;
                 const isDragFar = Math.abs(dx) > threshold;
 
+                // Reset the interactive curl first
+                this.pageImg.style.transition = 'transform 0.3s ease';
+                this.pageImg.style.transformOrigin = 'center center';
+                this.pageImg.style.transform = 'none';
+                setTimeout(() => { this.pageImg.style.transition = 'none'; }, 310);
+
                 if ((isSwipeFast || isDragFar) && dx < 0 && this.currentIndex < this.pages.length - 1) {
-                    // Commit next
-                    this._commitDragSlide(this.currentIndex + 1, 'left');
+                    setTimeout(() => this.next(), 50);
                 } else if ((isSwipeFast || isDragFar) && dx > 0 && this.currentIndex > 0) {
-                    // Commit prev
-                    this._commitDragSlide(this.currentIndex - 1, 'right');
-                } else {
-                    // Snap back
-                    this.track.style.transition = 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                    this.track.style.transform = 'translateX(0)';
+                    setTimeout(() => this.prev(), 50);
                 }
 
                 this._gestureState = null;
@@ -329,7 +388,7 @@ class MobileViewer {
                 return;
             }
 
-            // Tap-based swipe detection (quick flick without drag state)
+            // Quick flick detection
             if (this._maxTouches === 1 && !this._swipeLocked && e.changedTouches.length === 1) {
                 const endX = e.changedTouches[0].clientX;
                 const dx = endX - this._touchStartX;
@@ -348,53 +407,6 @@ class MobileViewer {
         stage.addEventListener('touchstart', this._onTouchStart, { passive: true });
         stage.addEventListener('touchmove', this._onTouchMove, { passive: false });
         stage.addEventListener('touchend', this._onTouchEnd, { passive: true });
-    }
-
-    // Complete an interactive drag into a full page slide
-    _commitDragSlide(newIdx, direction) {
-        if (newIdx < 0 || newIdx >= this.pages.length) return;
-        this._isAnimating = true;
-
-        const containerW = this.container.offsetWidth;
-
-        // Create incoming page at correct offset position
-        const incoming = this._createImg();
-        incoming.src = this.pages[newIdx].dataUrl;
-        incoming.style.position = 'absolute';
-        incoming.style.maxWidth = '100%';
-        incoming.style.maxHeight = '100%';
-
-        if (direction === 'left') {
-            incoming.style.left = containerW + 'px';
-        } else {
-            incoming.style.left = -containerW + 'px';
-        }
-
-        this.track.appendChild(incoming);
-        void this.track.offsetWidth;
-
-        // Animate to final position
-        const slideDistance = direction === 'left' ? -containerW : containerW;
-        this.track.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        this.track.style.transform = `translateX(${slideDistance}px)`;
-
-        const onDone = () => {
-            this.track.removeEventListener('transitionend', onDone);
-            this.track.style.transition = 'none';
-            this.track.style.transform = 'translateX(0)';
-            this.pageImg.src = this.pages[newIdx].dataUrl;
-            if (incoming.parentNode) incoming.parentNode.removeChild(incoming);
-
-            this.currentIndex = newIdx;
-            this.bm.currentIndex = newIdx;
-            this.bm.updateIndicators();
-            this.bm.updateNavButtons();
-            this.bm.app.updateThumbnails();
-            this._isAnimating = false;
-        };
-
-        this.track.addEventListener('transitionend', onDone, { once: true });
-        setTimeout(() => { if (this._isAnimating) onDone(); }, 400);
     }
 
     destroy() {
