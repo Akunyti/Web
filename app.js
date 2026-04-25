@@ -681,9 +681,16 @@ class BookManager {
         this.applyDynamicSize();
 
         this._resizeHandler = () => {
+            const wasMobile = this.isMobile;
             this.isMobile = window.innerWidth <= 850;
             this.applyDynamicSize();
-            if (this.pageFlip) this.pageFlip.update();
+            // If breakpoint changed (mobile <-> desktop), full reinit to switch layout mode
+            if (wasMobile !== this.isMobile) {
+                this.resetZoom(false);
+                this.initPageFlip();
+            } else if (this.pageFlip) {
+                this.pageFlip.update();
+            }
         };
         window.addEventListener('resize', this._resizeHandler);
 
@@ -839,31 +846,49 @@ class BookManager {
     }
 
     applyDynamicSize() {
-        const topbarH = this.isMobile ? 60 : 0;
-        const maxH = Math.max(300, window.innerHeight - 160 - topbarH);
-        const maxW = Math.max(300, window.innerWidth * (this.isMobile ? 0.96 : 0.88));
-        let pageH = maxH;
-        let pageW = pageH * this.pageAspect;
-
-        const spreadW = this.isMobile ? pageW : pageW * 2;
-        if (spreadW > maxW) {
-            const scale = maxW / spreadW;
-            pageW *= scale;
-            pageH *= scale;
-        }
-
-        this.pageW = Math.round(pageW);
-        this.pageH = Math.round(pageH);
-
-        let containerW = this.isMobile ? this.pageW : this.pageW * 2;
-        let containerH = this.pageH;
-
         if (this.isMobile) {
-            containerH = Math.max(this.pageH, this.pageW + 1);
-        }
+            // MOBILE: Single page fills the screen width, height derived from aspect ratio
+            const availW = window.innerWidth;
+            const availH = window.innerHeight - 60; // subtract bottom toolbar
 
-        this.container.style.width = containerW + 'px';
-        this.container.style.height = containerH + 'px';
+            let pageW = availW;
+            let pageH = pageW / this.pageAspect;
+
+            // If calculated height exceeds available height, shrink to fit
+            if (pageH > availH) {
+                pageH = availH;
+                pageW = pageH * this.pageAspect;
+            }
+
+            this.pageW = Math.round(pageW);
+            this.pageH = Math.round(pageH);
+
+            // Container must be portrait (height > width) to trigger StPageFlip single-page mode
+            const containerW = this.pageW;
+            const containerH = Math.max(this.pageH, this.pageW + 1);
+
+            this.container.style.width = containerW + 'px';
+            this.container.style.height = containerH + 'px';
+        } else {
+            // DESKTOP: Double page spread (unchanged)
+            const maxH = Math.max(300, window.innerHeight - 160);
+            const maxW = Math.max(300, window.innerWidth * 0.88);
+            let pageH = maxH;
+            let pageW = pageH * this.pageAspect;
+
+            const spreadW = pageW * 2;
+            if (spreadW > maxW) {
+                const scale = maxW / spreadW;
+                pageW *= scale;
+                pageH *= scale;
+            }
+
+            this.pageW = Math.round(pageW);
+            this.pageH = Math.round(pageH);
+
+            this.container.style.width = (this.pageW * 2) + 'px';
+            this.container.style.height = this.pageH + 'px';
+        }
     }
 
     initPageFlip() {
@@ -894,16 +919,18 @@ class BookManager {
             width: baseW,
             height: baseH,
             size: 'stretch',
-            minWidth: 200,
+            minWidth: 100,
             maxWidth: 2000,
-            minHeight: 200,
-            maxHeight: 2000,
-            maxShadowOpacity: this.isMobile ? 0.2 : 0.5,
+            minHeight: 100,
+            maxHeight: 3000,
+            maxShadowOpacity: this.isMobile ? 0.15 : 0.5,
             showCover: !this.isMobile,
-            showPageCorners: false,
+            showPageCorners: !this.isMobile,
             mobileScrollSupport: false,
             useMouseEvents: !this.isMobile,
-            usePortrait: this.isMobile
+            usePortrait: this.isMobile,
+            flippingTime: this.isMobile ? 400 : 700,
+            startPage: this.currentIndex
         });
 
         this.pageFlip.loadFromHTML(pagesElements);
