@@ -158,7 +158,7 @@ class FlipbookApp {
         const externalFile = urlParams.get('file');
 
         setTimeout(() => {
-            this.ui.splash.style.opacity = '0';
+            this.ui.splash.classList.add('zoom-out');
             setTimeout(() => {
                 this.ui.splash.classList.add('hidden');
                 if (externalFile) {
@@ -168,7 +168,7 @@ class FlipbookApp {
                     // Tampilkan katalog multi-PDF
                     this.checkCatalogOrLogin();
                 }
-            }, 800);
+            }, 1200);
         }, 1500);
 
         this.bindAuthEvents();

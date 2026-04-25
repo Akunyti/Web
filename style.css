@@ -69,16 +69,19 @@ body {
     z-index: 100;
     overflow-y: auto;
     padding: 40px 20px;
-    animation: fadeIn 0.4s ease forwards;
+    animation: screenReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes fadeIn {
-    from {
+@keyframes screenReveal {
+    0% {
         opacity: 0;
+        transform: scale(0.95) translateY(20px);
+        filter: blur(10px);
     }
-
-    to {
+    100% {
         opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0);
     }
 }
 
@@ -91,7 +94,15 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: opacity 0.8s ease;
+    transition: all 1.2s cubic-bezier(0.8, 0, 0.2, 1);
+    transform-origin: center center;
+}
+
+#splash-screen.zoom-out {
+    transform: scale(4);
+    opacity: 0;
+    filter: blur(30px);
+    pointer-events: none;
 }
 
 .splash-title {
@@ -337,6 +348,39 @@ body {
     opacity: 0.3;
 }
 
+.blob-4 {
+    width: 35vw;
+    height: 35vw;
+    background: linear-gradient(135deg, #f6d365, #fda085);
+    bottom: -5%;
+    left: 10%;
+    animation-duration: 30s;
+    animation-delay: -8s;
+    opacity: 0.25;
+}
+
+.blob-5 {
+    width: 55vw;
+    height: 55vw;
+    background: linear-gradient(135deg, #84fab0, #8fd3f4);
+    top: -15%;
+    right: 5%;
+    animation-duration: 26s;
+    animation-delay: -15s;
+    opacity: 0.2;
+}
+
+.blob-6 {
+    width: 40vw;
+    height: 40vw;
+    background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+    top: 30%;
+    right: -10%;
+    animation-duration: 32s;
+    animation-delay: -3s;
+    opacity: 0.3;
+}
+
 @keyframes floatingBlobs {
     0% { transform: translate(0, 0) scale(1) rotate(0deg); }
     33% { transform: translate(15vw, 10vh) scale(1.2) rotate(45deg); }
@@ -371,6 +415,21 @@ body {
 .star-13 { width: 3px; height: 3px; top: 70%; left: 40%; animation-delay: 2.8s; }
 .star-14 { width: 5px; height: 5px; top: 10%; left: 65%; animation-delay: 0.4s; }
 .star-15 { width: 2px; height: 2px; top: 80%; left: 15%; animation-delay: 1.9s; }
+.star-16 { width: 4px; height: 4px; top: 12%; left: 35%; animation-delay: 0.6s; }
+.star-17 { width: 2px; height: 2px; top: 48%; left: 25%; animation-delay: 2.2s; }
+.star-18 { width: 5px; height: 5px; top: 82%; left: 90%; animation-delay: 1.1s; }
+.star-19 { width: 3px; height: 3px; top: 28%; left: 65%; animation-delay: 0.3s; }
+.star-20 { width: 4px; height: 4px; top: 65%; left: 55%; animation-delay: 1.7s; }
+.star-21 { width: 2px; height: 2px; top: 5%; left: 85%; animation-delay: 2.4s; }
+.star-22 { width: 5px; height: 5px; top: 95%; left: 10%; animation-delay: 0.9s; }
+.star-23 { width: 3px; height: 3px; top: 38%; left: 88%; animation-delay: 1.6s; }
+.star-24 { width: 4px; height: 4px; top: 52%; left: 12%; animation-delay: 0.4s; }
+.star-25 { width: 2px; height: 2px; top: 78%; left: 70%; animation-delay: 2.9s; }
+.star-26 { width: 3px; height: 3px; top: 18%; left: 52%; animation-delay: 1.3s; }
+.star-27 { width: 4px; height: 4px; top: 88%; left: 45%; animation-delay: 0.8s; }
+.star-28 { width: 5px; height: 5px; top: 32%; left: 5%; animation-delay: 2.1s; }
+.star-29 { width: 2px; height: 2px; top: 68%; left: 32%; animation-delay: 0.5s; }
+.star-30 { width: 3px; height: 3px; top: 42%; left: 78%; animation-delay: 2.6s; }
 
 .binary {
     position: absolute;
@@ -394,6 +453,11 @@ body {
 .binary-3 { left: 35%; top: -50%; animation-duration: 22s; animation-delay: 2s; font-size: 1.1rem; }
 .binary-4 { left: 55%; top: -10%; animation-duration: 28s; animation-delay: 8s; font-size: 1.8rem; opacity: 0.1; }
 .binary-5 { left: 90%; top: -40%; animation-duration: 20s; animation-delay: 12s; font-size: 1.3rem; }
+.binary-6 { left: 5%; top: -30%; animation-duration: 21s; animation-delay: 3s; font-size: 1.4rem; opacity: 0.15; }
+.binary-7 { left: 25%; top: -10%; animation-duration: 26s; animation-delay: 9s; font-size: 1.0rem; opacity: 0.2; }
+.binary-8 { left: 45%; top: -45%; animation-duration: 19s; animation-delay: 1s; font-size: 1.6rem; opacity: 0.1; }
+.binary-9 { left: 65%; top: -25%; animation-duration: 24s; animation-delay: 6s; font-size: 1.2rem; opacity: 0.25; }
+.binary-10 { left: 85%; top: -5%; animation-duration: 29s; animation-delay: 14s; font-size: 1.7rem; opacity: 0.1; }
 
 .shape {
     position: absolute;
@@ -434,6 +498,28 @@ body {
     width: 140px; height: 140px; border-radius: 20px;
     bottom: 10%; right: 35%; animation-duration: 28s;
 }
+.shape-circle-3 {
+    width: 200px; height: 200px; border-radius: 50%;
+    top: -5%; right: 25%; animation-duration: 45s; opacity: 0.5;
+}
+.shape-square-3 {
+    width: 60px; height: 60px; border-radius: 8px;
+    bottom: 30%; left: 35%; animation-duration: 20s; animation-direction: reverse;
+}
+.shape-triangle-2 {
+    width: 0; height: 0; background: transparent;
+    border-left: 40px solid transparent; border-right: 40px solid transparent;
+    border-bottom: 70px solid rgba(255, 255, 255, 0.05); border-top: none;
+    top: 25%; right: 15%; animation-duration: 32s; animation-direction: reverse;
+}
+.shape-circle-4 {
+    width: 40px; height: 40px; border-radius: 50%;
+    bottom: 45%; right: 10%; animation-duration: 18s;
+}
+.shape-square-4 {
+    width: 90px; height: 90px; border-radius: 12px;
+    top: 50%; left: 5%; animation-duration: 36s;
+}
 
 .catalog-header {
     width: 100%;
@@ -457,32 +543,55 @@ body {
 }
 
 .catalog-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--glass-border);
+    background: rgba(24, 24, 27, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    animation: catalogEntrance 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    animation: catalogEntrance 0.8s cubic-bezier(0.25, 1, 0.5, 1) both;
+    position: relative;
+    transform-style: preserve-3d;
+}
+
+.catalog-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: skewX(-20deg);
+    z-index: 10;
+    transition: all 0.7s ease;
+    pointer-events: none;
+}
+
+.catalog-card:hover::before {
+    left: 150%;
 }
 
 @keyframes catalogEntrance {
-    from {
+    0% {
         opacity: 0;
-        transform: translateY(30px) scale(0.95);
+        transform: translateY(50px) rotateX(10deg) scale(0.9);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0) rotateX(0) scale(1);
     }
 }
 
 .catalog-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 20px var(--accent-glow);
-    border-color: var(--accent);
+    transform: translateY(-12px) scale(1.03) rotateY(2deg) rotateX(2deg);
+    box-shadow: 
+        -10px 20px 30px rgba(0, 0, 0, 0.4), 
+        0 0 25px var(--accent-glow),
+        inset 0 0 0 1px var(--accent);
+    border-color: transparent;
 }
 
 .catalog-cover {
@@ -495,33 +604,40 @@ body {
 .catalog-cover-icon {
     width: 100%;
     height: 180px;
-    background: linear-gradient(135deg, var(--accent-soft) 0%, var(--bg-tertiary) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 4rem;
+    font-size: 4.5rem;
     color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    text-shadow: 0 8px 16px rgba(0,0,0,0.4);
     border-bottom: 1px solid var(--glass-border);
     position: relative;
     overflow: hidden;
+    transition: all 0.5s ease;
 }
 
 .catalog-cover-icon::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.4) 100%);
+    background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.6) 100%);
     opacity: 0.5;
+    transition: opacity 0.5s ease;
+}
+
+.catalog-card:hover .catalog-cover-icon::after {
+    opacity: 0.2;
 }
 
 .catalog-cover-icon i {
     z-index: 1;
-    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .catalog-card:hover .catalog-cover-icon i {
-    transform: scale(1.2) rotate(-5deg);
+    transform: scale(1.3) translateY(-5px) rotate(-8deg);
+    filter: drop-shadow(0 15px 20px rgba(0,0,0,0.6));
+    color: #fff;
 }
 
 .catalog-info {
@@ -540,6 +656,15 @@ body {
     background: linear-gradient(135deg, #fff, #aaa);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    transition: all 0.4s ease;
+}
+
+.catalog-card:hover .catalog-title {
+    background: linear-gradient(135deg, #a78bfa, #fbc2eb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transform: scale(1.02);
+    transform-origin: left;
 }
 
 .catalog-desc {
