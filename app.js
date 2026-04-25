@@ -236,11 +236,28 @@ class FlipbookApp {
             return;
         }
 
-        items.forEach(item => {
+        const gradients = [
+            'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)',
+            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)',
+            'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+            'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)'
+        ];
+
+        items.forEach((item, index) => {
             const card = document.createElement('div');
             card.className = 'catalog-card';
+            card.style.animationDelay = `${index * 0.1}s`;
+            
+            const randomGradient = gradients[index % gradients.length];
+            
             card.innerHTML = `
-                <div class="catalog-cover-icon"><i class="fas fa-book-open"></i></div>
+                <div class="catalog-cover-icon" style="background: ${randomGradient};">
+                    <i class="fas fa-book-open"></i>
+                </div>
                 <div class="catalog-info">
                     <div class="catalog-title">${item.title}</div>
                     <div class="catalog-desc">${item.description}</div>
