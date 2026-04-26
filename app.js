@@ -471,14 +471,17 @@ class FlipbookApp {
 
     // --- VIEWER ---
     async openViewer(id) {
+        if (this.book && typeof this.book.destroy === 'function') {
+            this.book.destroy();
+            this.book = null;
+        }
         const fileRecord = this.userFiles.find(f => f.id === id);
         if (!fileRecord) return;
 
         this.showScreen('appScreen');
         
-
-
-        document.getElementById('btn-back-dash').style.display = 'flex'; // pastikan tombol back tampil
+        const btnBackDash = document.getElementById('btn-back-dash');
+        if (btnBackDash) btnBackDash.style.display = 'flex'; // pastikan tombol back tampil
         document.getElementById('book-title').textContent = fileRecord.name.replace(/\.pdf$/i, '');
         this.ui.viewerLoading.classList.remove('hidden');
         const loadText = document.getElementById('viewer-loading-text');
@@ -516,6 +519,10 @@ class FlipbookApp {
 
     // --- PUBLIC VIEWER (STATIC HOSTING SUPPORT) ---
     async loadExternalPDF(url) {
+        if (this.book && typeof this.book.destroy === 'function') {
+            this.book.destroy();
+            this.book = null;
+        }
         this.showScreen('appScreen');
         
 
@@ -670,16 +677,28 @@ class BookManager {
         this.app = app;
         this.pages = pages;
         this.currentIndex = 0;
-        this.container = document.getElementById('flipbook-container');
+        
+        // Recreate container to guarantee clean DOM state
+        let oldContainer = document.getElementById('flipbook-container');
+        if (oldContainer) {
+            const newContainer = document.createElement('div');
+            newContainer.id = 'flipbook-container';
+            oldContainer.parentNode.replaceChild(newContainer, oldContainer);
+            this.container = newContainer;
+        } else {
+            this.container = document.createElement('div');
+            this.container.id = 'flipbook-container';
+            const wrapper = document.getElementById('book-wrapper');
+            const nextBtn = document.getElementById('nav-next');
+            if (wrapper) wrapper.insertBefore(this.container, nextBtn);
+        }
+
         this.stage = document.getElementById('book-stage');
         this.zoomLevel = 1;
         this.panX = 0;
         this.panY = 0;
         this.pageAspect = pages[0] ? (pages[0].width / pages[0].height) : (4 / 3);
         this.isMobile = window.innerWidth <= 850;
-
-        // Clean container
-        this.container.innerHTML = '';
 
         this._resizeHandler = () => {
             const wasMobile = this.isMobile;
@@ -873,12 +892,20 @@ class BookManager {
             this.mobileViewer = null;
         }
         if (this.pageFlip) {
-            this.pageFlip.destroy();
+            try {
+                this.pageFlip.destroy();
+            } catch (e) {
+                console.warn("Error destroying pageFlip:", e);
+            }
             this.pageFlip = null;
         }
-        this.container.innerHTML = '';
-        this.container.style.cssText = '';
-        this.stage.classList.remove('is-zoomed');
+        if (this.container) {
+            this.container.innerHTML = '';
+            this.container.style.cssText = '';
+        }
+        if (this.stage) {
+            this.stage.classList.remove('is-zoomed');
+        }
         window.removeEventListener('resize', this._resizeHandler);
     }
 }
