@@ -847,16 +847,36 @@ class BookManager {
         document.getElementById('nav-next').disabled = this.currentIndex >= this.pages.length - 1;
     }
 
-    setZoom(level) {
+    setZoom(level, mouseX, mouseY) {
         if (this.mobileViewer) { this.mobileViewer.setZoom(level); return; }
-        this.zoomLevel = Math.max(1, Math.min(4, level));
-        if (this.zoomLevel <= 1.05) {
+        
+        const oldZoom = this.zoomLevel;
+        let newZoom = Math.max(1, Math.min(4, level));
+        
+        if (newZoom <= 1.05) {
             this.resetZoom(true);
-        } else {
-            this.panX = 0;
-            this.panY = 0;
-            this._applyTransform();
+            return;
         }
+
+        this.zoomLevel = newZoom;
+
+        const rect = this.stage.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        
+        let mx = 0;
+        let my = 0;
+        
+        if (mouseX !== undefined && mouseY !== undefined) {
+            mx = mouseX - cx;
+            my = mouseY - cy;
+        }
+
+        const zoomRatio = this.zoomLevel / oldZoom;
+        this.panX = mx - (mx - this.panX) * zoomRatio;
+        this.panY = my - (my - this.panY) * zoomRatio;
+
+        this._applyTransform();
     }
 
     resetZoom(animate = false) {
@@ -874,19 +894,101 @@ class BookManager {
         this.container.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
         this.container.style.transformOrigin = 'center center';
         this.stage.classList.toggle('is-zoomed', this.zoomLevel > 1.05);
+        if (this.zoomLevel > 1.05) {
+            this.stage.style.cursor = this._isDragging ? 'grabbing' : 'grab';
+            this.container.style.pointerEvents = 'none';
+        } else {
+            this.stage.style.cursor = '';
+            this.container.style.pointerEvents = 'auto';
+        }
     }
 
     bindEvents() {
         document.getElementById('nav-prev').onclick = () => this.turnBackward();
         document.getElementById('nav-next').onclick = () => this.turnForward();
-        document.onkeydown = (e) => {
+        
+        this._keydownHandler = (e) => {
             if (this.app.ui.appScreen.classList.contains('hidden')) return;
             if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); this.turnForward(); }
             else if (e.key === 'ArrowLeft') { e.preventDefault(); this.turnBackward(); }
         };
+        document.addEventListener('keydown', this._keydownHandler);
+
+        // Zoom and Pan Handlers for Desktop
+        this._isDragging = false;
+        
+        this._wheelHandler = (e) => {
+            if (this.isMobile) return;
+            if (e.ctrlKey || e.metaKey || this.zoomLevel > 1.05) {
+                e.preventDefault();
+                let actualDelta = e.deltaY > 0 ? -0.15 : 0.15;
+                if (e.ctrlKey) {
+                    actualDelta = e.deltaY * -0.01;
+                }
+                this.setZoom(this.zoomLevel + actualDelta, e.clientX, e.clientY);
+            }
+        };
+
+        this._mouseDownHandler = (e) => {
+            if (this.isMobile || this.zoomLevel <= 1.05) return;
+            this._isDragging = true;
+            this._dragStartX = e.clientX;
+            this._dragStartY = e.clientY;
+            this._initialPanX = this.panX;
+            this._initialPanY = this.panY;
+            this.stage.style.cursor = 'grabbing';
+            e.preventDefault();
+        };
+
+        this._mouseMoveHandler = (e) => {
+            if (!this._isDragging || this.isMobile) return;
+            const dx = e.clientX - this._dragStartX;
+            const dy = e.clientY - this._dragStartY;
+            this.panX = this._initialPanX + dx;
+            this.panY = this._initialPanY + dy;
+            this._applyTransform();
+        };
+
+        this._mouseUpHandler = () => {
+            if (!this._isDragging) return;
+            this._isDragging = false;
+            if (this.zoomLevel > 1.05) {
+                this.stage.style.cursor = 'grab';
+            } else {
+                this.stage.style.cursor = '';
+            }
+        };
+
+        this.stage.addEventListener('wheel', this._wheelHandler, { passive: false });
+        this.stage.addEventListener('mousedown', this._mouseDownHandler);
+        window.addEventListener('mousemove', this._mouseMoveHandler);
+        window.addEventListener('mouseup', this._mouseUpHandler);
     }
 
     destroy() {
+        if (this._keydownHandler) {
+            document.removeEventListener('keydown', this._keydownHandler);
+            this._keydownHandler = null;
+        }
+        if (this._wheelHandler && this.stage) {
+            this.stage.removeEventListener('wheel', this._wheelHandler);
+            this._wheelHandler = null;
+        }
+        if (this._mouseDownHandler && this.stage) {
+            this.stage.removeEventListener('mousedown', this._mouseDownHandler);
+            this._mouseDownHandler = null;
+        }
+        if (this._mouseMoveHandler) {
+            window.removeEventListener('mousemove', this._mouseMoveHandler);
+            this._mouseMoveHandler = null;
+        }
+        if (this._mouseUpHandler) {
+            window.removeEventListener('mouseup', this._mouseUpHandler);
+            this._mouseUpHandler = null;
+        }
+        
+        document.onkeydown = null;
+
         if (this.mobileViewer) {
             this.mobileViewer.destroy();
             this.mobileViewer = null;
@@ -902,9 +1004,11 @@ class BookManager {
         if (this.container) {
             this.container.innerHTML = '';
             this.container.style.cssText = '';
+            this.container.style.pointerEvents = 'auto';
         }
         if (this.stage) {
             this.stage.classList.remove('is-zoomed');
+            this.stage.style.cursor = '';
         }
         window.removeEventListener('resize', this._resizeHandler);
     }
