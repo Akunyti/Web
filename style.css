@@ -20,7 +20,7 @@
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 
     --topbar-height: 60px;
-    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     --page-shadow: 2px 0 12px rgba(0, 0, 0, 0.15), inset -2px 0 8px rgba(0, 0, 0, 0.05);
     --page-shadow-left: -2px 0 12px rgba(0, 0, 0, 0.15), inset 2px 0 8px rgba(0, 0, 0, 0.05);
     
@@ -102,8 +102,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: all 1.2s cubic-bezier(0.8, 0, 0.2, 1);
+    transition: all 1.2s cubic-bezier(0.25, 1, 0.5, 1);
     transform-origin: center center;
+    will-change: transform, opacity, filter;
 }
 
 #splash-screen.zoom-out {
@@ -302,19 +303,19 @@ body {
 /* Premium Animated Background */
 .catalog-bg {
     position: fixed;
-    inset: 0;
+    inset: -40px;
     z-index: -1;
     overflow: hidden;
     background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
     background-size: 40px 40px;
-    background-position: 0 0;
-    animation: moveGrid 30s linear infinite;
+    animation: moveGrid 20s linear infinite;
     pointer-events: none;
+    will-change: transform;
 }
 
 @keyframes moveGrid {
-    0% { background-position: 0 0; }
-    100% { background-position: 40px 40px; }
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(40px, 40px, 0); }
 }
 
 .blob {
@@ -403,10 +404,11 @@ body {
     border-radius: 50%;
     filter: blur(1px);
     animation: twinkle 4s infinite alternate ease-in-out;
+    will-change: transform, opacity;
 }
 @keyframes twinkle {
-    0%, 100% { opacity: 0.2; transform: scale(0.8); }
-    50% { opacity: 0.8; transform: scale(1.5); box-shadow: 0 0 10px var(--star-color), 0 0 20px var(--star-color); }
+    0%, 100% { opacity: 0.2; transform: scale(0.8) translateZ(0); }
+    50% { opacity: 0.8; transform: scale(1.5) translateZ(0); }
 }
 .star-1 { width: 3px; height: 3px; top: 15%; left: 20%; animation-delay: 0s; }
 .star-2 { width: 4px; height: 4px; top: 25%; left: 80%; animation-delay: 1s; }
@@ -470,15 +472,15 @@ body {
 .shape {
     position: absolute;
     background: var(--shape-bg);
-    backdrop-filter: blur(5px);
     border: 1px solid var(--shape-border);
     animation: spinShape 30s linear infinite;
     z-index: -1;
+    will-change: transform;
 }
 @keyframes spinShape {
-    0% { transform: rotate(0deg) translate(0,0); }
-    50% { transform: rotate(180deg) translate(30px, 40px); }
-    100% { transform: rotate(360deg) translate(0,0); }
+    0% { transform: rotate(0deg) translate3d(0,0,0); }
+    50% { transform: rotate(180deg) translate3d(30px, 40px, 0); }
+    100% { transform: rotate(360deg) translate3d(0,0,0); }
 }
 .shape-circle {
     width: 150px; height: 150px; border-radius: 50%;
@@ -557,13 +559,14 @@ body {
     border: 1px solid var(--glass-border);
     border-radius: 20px;
     overflow: hidden;
-    transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     cursor: pointer;
     display: flex;
     flex-direction: column;
     animation: catalogEntrance 0.8s cubic-bezier(0.25, 1, 0.5, 1) both;
     position: relative;
     transform-style: preserve-3d;
+    will-change: transform, box-shadow;
 }
 
 .catalog-card::before {
@@ -1249,7 +1252,16 @@ body {
         position: fixed;
         bottom: 0;
         top: auto;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(100%);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #app.fullscreen.show-controls #top-bar {
         opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
     }
 
     .nav-left .book-title {
@@ -1264,7 +1276,7 @@ body {
     }
 
     #app.fullscreen #book-stage {
-        height: calc(100dvh - var(--topbar-height));
+        height: 100dvh;
     }
 
     .book-wrapper {
@@ -1354,20 +1366,58 @@ body {
     }
 }
 
-#app.fullscreen #top-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(to bottom, var(--bg-main) 50%, transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
+/* Desktop Fullscreen */
+@media (min-width: 851px) {
+    #app.fullscreen #top-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to bottom, var(--bg-main) 50%, transparent);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-100%);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #app.fullscreen.show-controls #top-bar,
+    #app.fullscreen #top-bar:hover {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+
+    #app.fullscreen #book-stage {
+        height: 100vh;
+    }
 }
 
-#app.fullscreen #top-bar:hover {
-    opacity: 1;
-}
+/* Mobile Landscape Override */
+@media (max-width: 850px) and (orientation: landscape) {
+    #top-bar {
+        bottom: auto !important;
+        top: 0 !important;
+        border-top: none !important;
+        border-bottom: 1px solid var(--glass-border) !important;
+    }
+    
+    #app.fullscreen #top-bar {
+        position: fixed !important;
+        bottom: auto !important;
+        top: 0 !important;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-100%) !important;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
 
-#app.fullscreen #book-stage {
-    height: 100vh;
+    #app.fullscreen.show-controls #top-bar {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0) !important;
+    }
+
+    #thumbnail-dock {
+        bottom: 0 !important;
+    }
 }

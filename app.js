@@ -645,15 +645,33 @@ class FlipbookApp {
             e.currentTarget.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
         });
 
+        // Fullscreen Controls Auto-Hide Logic
+        let controlsTimeout;
+        const appEl = document.getElementById('app');
+        
+        const resetControlsTimeout = () => {
+            if (!document.fullscreenElement) return;
+            appEl.classList.add('show-controls');
+            clearTimeout(controlsTimeout);
+            controlsTimeout = setTimeout(() => {
+                appEl.classList.remove('show-controls');
+            }, 3000);
+        };
+
+        appEl.addEventListener('mousemove', resetControlsTimeout);
+        appEl.addEventListener('touchstart', resetControlsTimeout, { passive: true });
+
         document.getElementById('btn-fullscreen').addEventListener('click', (e) => {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(() => { });
-                document.getElementById('app').classList.add('fullscreen');
+                appEl.classList.add('fullscreen');
                 e.currentTarget.innerHTML = '<i class="fas fa-compress"></i>';
+                resetControlsTimeout();
             } else {
                 document.exitFullscreen();
-                document.getElementById('app').classList.remove('fullscreen');
+                appEl.classList.remove('fullscreen', 'show-controls');
                 e.currentTarget.innerHTML = '<i class="fas fa-expand"></i>';
+                clearTimeout(controlsTimeout);
             }
         });
 
@@ -662,8 +680,11 @@ class FlipbookApp {
 
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
-                document.getElementById('app').classList.remove('fullscreen');
+                appEl.classList.remove('fullscreen', 'show-controls');
                 document.getElementById('btn-fullscreen').innerHTML = '<i class="fas fa-expand"></i>';
+                clearTimeout(controlsTimeout);
+            } else {
+                resetControlsTimeout();
             }
         });
     }
@@ -891,8 +912,9 @@ class BookManager {
     }
 
     _applyTransform() {
-        this.container.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+        this.container.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.zoomLevel})`;
         this.container.style.transformOrigin = 'center center';
+        this.container.style.willChange = 'transform';
         this.stage.classList.toggle('is-zoomed', this.zoomLevel > 1.05);
         if (this.zoomLevel > 1.05) {
             this.stage.style.cursor = this._isDragging ? 'grabbing' : 'grab';

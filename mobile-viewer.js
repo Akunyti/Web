@@ -84,7 +84,7 @@ class MobileViewer {
         if (newIdx < 0 || newIdx >= this.pages.length) return;
         this._isAnimating = true;
 
-        const FLIP_DURATION = 600; // ms
+        const FLIP_DURATION = 500; // ms
 
         // Create a flip card element that holds front (current) and back (new)
         const flipCard = document.createElement('div');
@@ -92,8 +92,9 @@ class MobileViewer {
             position: absolute; width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
             transform-style: preserve-3d;
-            transition: transform ${FLIP_DURATION}ms cubic-bezier(0.4, 0.0, 0.2, 1);
+            transition: transform ${FLIP_DURATION}ms cubic-bezier(0.25, 0.8, 0.25, 1);
             transform-origin: ${direction === 'left' ? 'left center' : 'right center'};
+            will-change: transform;
         `;
 
         // Front face: current page
@@ -209,8 +210,9 @@ class MobileViewer {
         const maxPan = (this.zoomLevel - 1) * 250;
         this.panX = Math.max(-maxPan, Math.min(maxPan, this.panX));
         this.panY = Math.max(-maxPan, Math.min(maxPan, this.panY));
-        this.pageImg.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+        this.pageImg.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.zoomLevel})`;
         this.pageImg.style.transformOrigin = 'center center';
+        this.pageImg.style.willChange = 'transform';
 
         const stage = this.bm.stage;
         if (stage) stage.classList.toggle('is-zoomed', this.zoomLevel > 1.05);
