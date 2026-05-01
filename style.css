@@ -50,6 +50,12 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
 }
 
 body {
@@ -60,6 +66,10 @@ body {
     touch-action: manipulation;
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
 }
 
 .hidden {
@@ -1134,8 +1144,6 @@ body {
     box-shadow: var(--glass-shadow);
     overflow-x: auto;
     max-width: 90vw;
-    scrollbar-width: thin;
-    scrollbar-color: var(--accent) transparent;
 }
 
 .thumb-item {

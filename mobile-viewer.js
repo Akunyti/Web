@@ -207,15 +207,53 @@ class MobileViewer {
 
     // --- Zoom & Pan (for pinch-to-zoom) ---
     _applyTransform() {
-        const maxPan = (this.zoomLevel - 1) * 250;
-        this.panX = Math.max(-maxPan, Math.min(maxPan, this.panX));
-        this.panY = Math.max(-maxPan, Math.min(maxPan, this.panY));
+        // Dynamic bounding box for panning
+         const containerW = this.container.offsetWidth;
+         const containerH = this.container.offsetHeight;
+         
+         // Use aspect ratio if image dimensions are not yet available
+         let imgW = this.pageImg.offsetWidth;
+         let imgH = this.pageImg.offsetHeight;
+         
+         if (!imgW || !imgH) {
+             const aspect = this.bm.pageAspect || 1;
+             if (containerW / containerH > aspect) {
+                 imgH = containerH;
+                 imgW = containerH * aspect;
+             } else {
+                 imgW = containerW;
+                 imgH = containerW / aspect;
+             }
+         }
+ 
+         // Calculate how much of the image is "outside" the container when zoomed
+        // We allow panning so that the edges of the zoomed image can reach the edges of the container
+        const zoomedW = imgW * this.zoomLevel;
+        const zoomedH = imgH * this.zoomLevel;
+
+        let maxPanX = Math.max(0, (zoomedW - containerW) / 2);
+        let maxPanY = Math.max(0, (zoomedH - containerH) / 2);
+
+        // Add some "freedom" buffer (extra 20% of screen size) to allow panning slightly beyond edges
+        // like a clean object viewer
+        const freedomBufferX = containerW * 0.2;
+        const freedomBufferY = containerH * 0.2;
+        
+        maxPanX += freedomBufferX;
+        maxPanY += freedomBufferY;
+
+        this.panX = Math.max(-maxPanX, Math.min(maxPanX, this.panX));
+        this.panY = Math.max(-maxPanY, Math.min(maxPanY, this.panY));
+
         this.pageImg.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.zoomLevel})`;
         this.pageImg.style.transformOrigin = 'center center';
         this.pageImg.style.willChange = 'transform';
 
         const stage = this.bm.stage;
-        if (stage) stage.classList.toggle('is-zoomed', this.zoomLevel > 1.05);
+        if (stage) {
+            // Threshold lowered to allow panning feel even at near-1 zoom
+            stage.classList.toggle('is-zoomed', this.zoomLevel > 1.01 || Math.abs(this.panX) > 5 || Math.abs(this.panY) > 5);
+        }
     }
 
     resetZoom(animate = false) {
@@ -226,7 +264,9 @@ class MobileViewer {
         this._initialPanY = 0;
         if (animate) {
             this.pageImg.style.transition = 'transform 0.3s cubic-bezier(.25,.8,.25,1)';
-            setTimeout(() => { this.pageImg.style.transition = 'none'; }, 320);
+            setTimeout(() => { 
+                if (this.pageImg) this.pageImg.style.transition = 'none'; 
+            }, 320);
         } else {
             this.pageImg.style.transition = 'none';
         }
@@ -234,14 +274,15 @@ class MobileViewer {
     }
 
     setZoom(level) {
+        const oldZoom = this.zoomLevel;
         this.zoomLevel = Math.max(1, Math.min(4, level));
-        if (this.zoomLevel <= 1.05) {
+        
+        // If zoom is basically 1 and no pan, reset
+        if (this.zoomLevel <= 1.01 && Math.abs(this.panX) < 1 && Math.abs(this.panY) < 1) {
             this.resetZoom(true);
         } else {
-            this.panX = 0;
-            this.panY = 0;
-            this._initialPanX = 0;
-            this._initialPanY = 0;
+            // Don't reset panX/panY to 0 when zooming via buttons
+            // This allows the "zoom freedom" the user requested
             this._applyTransform();
         }
     }
@@ -302,8 +343,10 @@ class MobileViewer {
                 const dx = e.touches[0].clientX - this._touchStartX;
                 const dy = e.touches[0].clientY - this._touchStartY;
 
-                if (this.zoomLevel > 1.05) {
-                    // Pan when zoomed
+                // If zoomed even slightly, or already panned, prioritize panning over page flip
+                const isPanned = Math.abs(this.panX) > 5 || Math.abs(this.panY) > 5;
+                if (this.zoomLevel > 1.01 || isPanned) {
+                    // Pan when zoomed or already moved
                     if (!this._gestureState) this._gestureState = 'pan';
                     if (this._gestureState === 'pan') {
                         e.preventDefault();
